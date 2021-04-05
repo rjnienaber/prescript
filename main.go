@@ -27,9 +27,9 @@ func createLogger() *zap.Logger {
 	return logger
 }
 
-func startCommand(args []string, logger *zap.SugaredLogger) (io.ReadCloser, io.WriteCloser, *os.Process) {
-	appArgs := strings.Join(args[1:], ",")
-	cmd := exec.Command(args[0], appArgs)
+func startCommand(appPath string, args []string, logger *zap.SugaredLogger) (io.ReadCloser, io.WriteCloser, *os.Process) {
+	appArgs := strings.Join(args, ",")
+	cmd := exec.Command(appPath, appArgs)
 	stdout, err := cmd.StdoutPipe()
 	processError(err, logger, "Failed to capture stdout")
 
@@ -44,13 +44,24 @@ func startCommand(args []string, logger *zap.SugaredLogger) (io.ReadCloser, io.W
 	return stdout, stdin, cmd.Process
 }
 
-func main() {
-	zapLogger := createLogger()
-	// sync errors can be ignored: https://github.com/uber-go/zap/issues/328
-	defer zapLogger.Sync()
-	logger := zapLogger.Sugar()
+type Step struct {
+	prompt string
+	input  string
+}
 
-	stdout, stdin, process := startCommand(os.Args[1:], logger)
+type RunParameters struct {
+	appFilePath string
+	args        []string
+	logger      *zap.Logger
+	steps       []Step
+}
+
+func Run(params RunParameters) int {
+	// sync errors can be ignored: https://github.com/uber-go/zap/issues/328
+	defer params.logger.Sync()
+	logger := params.logger.Sugar()
+
+	stdout, stdin, process := startCommand(params.appFilePath, params.args, logger)
 
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanBytes)
@@ -64,18 +75,44 @@ func main() {
 		}
 
 		currentLine += char
-		matchLine(currentLine, `HOW MANY ROLLS\? `, "5000", logger, stdin)
-		matchLine(currentLine, `TRY AGAIN\? `, "N", logger, stdin)
+
+		for _, step := range params.steps {
+			if matchLine(currentLine, step.prompt, step.input, logger, stdin) {
+				currentLine = ""
+				break
+			}
+		}
 	}
 
 	state, err := process.Wait()
 	processError(err, logger, "Error waiting for process to finish")
 
-	fmt.Println("Exit code: ", state.ExitCode())
-	os.Exit(state.ExitCode())
+	return state.ExitCode()
 }
 
-func matchLine(currentLine string, promptToMatch string, input string, logger *zap.SugaredLogger, stdin io.WriteCloser) {
+func main() {
+	zapLogger := createLogger()
+	rollStep := Step{
+		prompt: `HOW MANY ROLLS\? `,
+		input:  "5000",
+	}
+
+	tryAgainStep := Step{
+		prompt: `TRY AGAIN\? `,
+		input:  "N",
+	}
+
+	params := RunParameters{
+		appFilePath: os.Args[1],
+		args:        os.Args[2:],
+		logger:      zapLogger,
+		steps:       []Step{rollStep, tryAgainStep},
+	}
+	exitCode := Run(params)
+	os.Exit(exitCode)
+}
+
+func matchLine(currentLine string, promptToMatch string, input string, logger *zap.SugaredLogger, stdin io.WriteCloser) bool {
 	matched, err := regexp.MatchString(promptToMatch, currentLine)
 	processError(err, logger, "Error matching line with regex")
 
@@ -83,5 +120,7 @@ func matchLine(currentLine string, promptToMatch string, input string, logger *z
 		fmt.Print(input + "\n")
 		_, err = stdin.Write([]byte(input + "\n"))
 		processError(err, logger, "Error writing to stdin")
+		return true
 	}
+	return false
 }
