@@ -11,10 +11,12 @@ import (
 	"strings"
 )
 
+const INTERNAL_ERROR = 2
+
 func processError(err error, logger *zap.SugaredLogger, message string) {
 	if err != nil {
 		logger.Error(message+": ", err)
-		os.Exit(2)
+		os.Exit(INTERNAL_ERROR)
 	}
 }
 
@@ -22,7 +24,7 @@ func createLogger() *zap.Logger {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		fmt.Println("Could not create logger", err.Error())
-		os.Exit(2)
+		os.Exit(INTERNAL_ERROR)
 	}
 	return logger
 }
@@ -45,15 +47,19 @@ func startCommand(appPath string, args []string, logger *zap.SugaredLogger) (io.
 }
 
 type Step struct {
-	prompt string
-	input  string
+	line  string
+	input string
 }
 
+// TODO: embed struct for <script.json> with RunParameters
+// https://stackoverflow.com/a/40510391/9539
 type RunParameters struct {
-	appFilePath string
-	args        []string
-	logger      *zap.Logger
-	steps       []Step
+	appFilePath           string
+	args                  []string
+	timeoutInMilliseconds int
+	logger                *zap.Logger
+	steps                 []Step
+	exitCode              int
 }
 
 func Run(params RunParameters) int {
@@ -67,9 +73,11 @@ func Run(params RunParameters) int {
 	scanner.Split(bufio.ScanBytes)
 	currentLine := ""
 	for scanner.Scan() {
+		// TODO: verify output steps
 		char := scanner.Text()
 		fmt.Print(char)
 		if char == "\n" {
+			// TODO: should match lines with steps
 			currentLine = ""
 			continue
 		}
@@ -77,7 +85,8 @@ func Run(params RunParameters) int {
 		currentLine += char
 
 		for _, step := range params.steps {
-			if matchLine(currentLine, step.prompt, step.input, logger, stdin) {
+			// TODO: should not loop over steps that have already matched
+			if matchLine(currentLine, step.line, step.input, logger, stdin) {
 				currentLine = ""
 				break
 			}
@@ -87,19 +96,20 @@ func Run(params RunParameters) int {
 	state, err := process.Wait()
 	processError(err, logger, "Error waiting for process to finish")
 
-	return state.ExitCode()
+	exitCode := state.ExitCode()
+	return exitCode
 }
 
 func main() {
 	zapLogger := createLogger()
 	rollStep := Step{
-		prompt: `HOW MANY ROLLS\? `,
-		input:  "5000",
+		line:  `HOW MANY ROLLS\? `,
+		input: "5000",
 	}
 
 	tryAgainStep := Step{
-		prompt: `TRY AGAIN\? `,
-		input:  "N",
+		line:  `TRY AGAIN\? `,
+		input: "N",
 	}
 
 	params := RunParameters{

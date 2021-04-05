@@ -48,8 +48,8 @@ func TestInput(t *testing.T) {
 	t.Parallel()
 	params := createParams(t, "fixtures/input.sh")
 	step := Step{
-		prompt: "Please enter your name: ",
-		input:  "Richard",
+		line:  "Please enter your name: ",
+		input: "Richard",
 	}
 	params.steps = []Step{step}
 	exitCode := Run(params)
@@ -60,14 +60,26 @@ func TestDoubleInput(t *testing.T) {
 	t.Parallel()
 	params := createParams(t, "fixtures/double_input.sh")
 	firstInput := Step{
-		prompt: "First number: ",
-		input:  "1",
+		line:  "First number: ",
+		input: "1",
 	}
 	secondInput := Step{
-		prompt: "Second number: ",
-		input:  "2",
+		line:  "Second number: ",
+		input: "2",
 	}
 	params.steps = []Step{firstInput, secondInput}
 	exitCode := Run(params)
 	assert.Equal(t, 0, exitCode)
+}
+
+func TestFailIfUnexpectedStep(t *testing.T) {
+	t.Parallel()
+	params := createParams(t, "fixtures/output.sh")
+	output := Step{
+		line: "Hello, Rachel",
+	}
+	params.steps = []Step{output}
+	params.timeoutInMilliseconds = 1000
+	exitCode := Run(params)
+	assert.Equal(t, 1, exitCode)
 }
