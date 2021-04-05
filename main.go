@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"go.uber.org/zap"
 	"io"
@@ -39,26 +40,14 @@ func startCommand(args []string, logger *zap.SugaredLogger) io.ReadCloser {
 
 func main() {
 	logger := createLogger()
-	defer func() {
-		if err := logger.Sync(); err != nil {
-			fmt.Println("Could not sync logger on exit", err.Error())
-		}
-	}()
+	// sync errors can be ignored: https://github.com/uber-go/zap/issues/328
+	defer logger.Sync()
 	sugar := logger.Sugar()
 
 	stdout := startCommand(os.Args[1:], sugar)
 
-	for {
-		tmp := make([]byte, 1024)
-		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
-		if err != nil {
-			if err != io.EOF {
-				sugar.Error("Error reading stdout: ", err)
-				os.Exit(1)
-			}
-
-			break
-		}
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
 	}
 }
