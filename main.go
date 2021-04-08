@@ -1,102 +1,35 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"go.uber.org/zap"
 	"io"
 	"os"
-	"os/exec"
+	"prescript/lib"
 	"regexp"
-	"strings"
 	"time"
 )
 
-const SUCCESS = 0
-const CLI_ERROR = 1
-const INTERNAL_ERROR = 2
-
-func processError(err error, logger *zap.SugaredLogger, message string) {
-	if err != nil {
-		logger.Error(message+": ", err)
-		os.Exit(INTERNAL_ERROR)
-	}
-}
-
-func createLogger() *zap.Logger {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		fmt.Println("could not create logger", err.Error())
-		os.Exit(INTERNAL_ERROR)
-	}
-	return logger
-}
-
-func startCommand(appPath string, args []string, logger *zap.SugaredLogger) (io.ReadCloser, io.WriteCloser, *os.Process) {
-	appArgs := strings.Join(args, ",")
-	cmd := exec.Command(appPath, appArgs)
-	stdout, err := cmd.StdoutPipe()
-	processError(err, logger, "failed to capture stdout")
-	logger.Debug("captured stdout pipe")
-
-	cmd.Stderr = cmd.Stdout
-
-	stdin, err := cmd.StdinPipe()
-	processError(err, logger, "failed to capture stdin")
-	logger.Debug("captured stdin pipe")
-
-	err = cmd.Start()
-	processError(err, logger, "failed to start app")
-	logger.Debug("started application")
-
-	return stdout, stdin, cmd.Process
-}
-
-type Step struct {
-	line  string
-	input string
-}
-
-// TODO: merge struct for <script.json> with RunParameters
-// https://stackoverflow.com/a/40510391/9539
-type RunParameters struct {
-	appFilePath           string
-	args                  []string
-	timeoutInMilliseconds int64
-	logger                *zap.Logger
-	steps                 []Step
-	exitCode              int
-}
-
-func (params *RunParameters) timeout() time.Duration {
-	if params.timeoutInMilliseconds != 0 {
-		return time.Duration(params.timeoutInMilliseconds) * time.Millisecond
-	}
-	return 30 * time.Millisecond
-}
-
-func Run(params RunParameters) int {
+func Run(params lib.RunParameters) int {
+	logger := params.Logger.Sugar()
 	// sync errors can be ignored: https://github.com/uber-go/zap/issues/328
-	defer params.logger.Sync()
-	logger := params.logger.Sugar()
+	defer logger.Sync()
 
-	stdout, stdin, process := startCommand(params.appFilePath, params.args, logger)
+	command := lib.StartCommand(params.AppFilePath, params.Args, logger)
 
-	scanner := bufio.NewScanner(stdout)
-	scanner.Split(bufio.ScanBytes)
 	currentLine := ""
 	currentStepIndex := 0
 	for {
 		scannerChannel := make(chan bool, 0)
-		go func() { scannerChannel <- scanner.Scan() }()
+		go func() { scannerChannel <- command.Scanner.Scan() }()
 
 		scannerResult := false
 		select {
 		case res := <-scannerChannel:
 			scannerResult = res
-		case <-time.After(params.timeout()):
+		case <-time.After(params.Timeout()):
 			logger.Info("timed out waiting for cli to return output")
-			return CLI_ERROR
+			return lib.CLI_ERROR
 		}
 
 		logger.Debugf("last scanner result: '%t'", scannerResult)
@@ -105,7 +38,7 @@ func Run(params RunParameters) int {
 			break
 		}
 
-		char := scanner.Text()
+		char := command.Scanner.Text()
 		fmt.Print(char)
 		if char == "\n" {
 			currentLine = ""
@@ -113,42 +46,42 @@ func Run(params RunParameters) int {
 		}
 
 		currentLine += char
-		if currentStepIndex < len(params.steps) {
-			step := params.steps[currentStepIndex]
-			if matchLine(currentLine, step.line, step.input, logger, stdin) {
+		if currentStepIndex < len(params.Steps) {
+			step := params.Steps[currentStepIndex]
+			if matchLine(currentLine, step.Line, step.Input, logger, command.Stdin) {
 				currentStepIndex += 1
 				currentLine = ""
 			}
 		}
 	}
 
-	_, err := process.Wait()
-	processError(err, logger, "error waiting for process to finish")
+	_, err := command.Process.Wait()
+	lib.ProcessError(err, logger, "error waiting for process to finish")
 
-	if currentStepIndex < len(params.steps) {
-		return CLI_ERROR
+	if currentStepIndex < len(params.Steps) {
+		return lib.CLI_ERROR
 	}
 
-	return SUCCESS
+	return lib.SUCCESS
 }
 
 func main() {
-	zapLogger := createLogger()
-	rollStep := Step{
-		line:  `HOW MANY ROLLS\? `,
-		input: "5000",
+	zapLogger := lib.CreateLogger()
+	rollStep := lib.Step{
+		Line:  `HOW MANY ROLLS\? `,
+		Input: "5000",
 	}
 
-	tryAgainStep := Step{
-		line:  `TRY AGAIN\? `,
-		input: "N",
+	tryAgainStep := lib.Step{
+		Line:  `TRY AGAIN\? `,
+		Input: "N",
 	}
 
-	params := RunParameters{
-		appFilePath: os.Args[1],
-		args:        os.Args[2:],
-		logger:      zapLogger,
-		steps:       []Step{rollStep, tryAgainStep},
+	params := lib.RunParameters{
+		AppFilePath: os.Args[1],
+		Args:        os.Args[2:],
+		Logger:      zapLogger,
+		Steps:       []lib.Step{rollStep, tryAgainStep},
 	}
 	exitCode := Run(params)
 	os.Exit(exitCode)
@@ -156,7 +89,7 @@ func main() {
 
 func matchLine(currentLine string, currentStep string, input string, logger *zap.SugaredLogger, stdin io.WriteCloser) bool {
 	matched, err := regexp.MatchString(currentStep, currentLine)
-	processError(err, logger, "error matching line with regex")
+	lib.ProcessError(err, logger, "error matching line with regex")
 
 	if matched {
 		logger.Debugf("matched current line '%s' with step '%s'", currentLine, currentStep)
@@ -164,7 +97,7 @@ func matchLine(currentLine string, currentStep string, input string, logger *zap
 			fmt.Print(input + "\n")
 			logger.Debugf("writing input '%s' to stdin", input)
 			_, err = stdin.Write([]byte(input + "\n"))
-			processError(err, logger, "error writing to stdin")
+			lib.ProcessError(err, logger, "error writing to stdin")
 		}
 		return true
 	}

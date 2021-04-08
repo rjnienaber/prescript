@@ -5,6 +5,7 @@ import (
 	"go.uber.org/zap"
 	"os"
 	"path/filepath"
+	"prescript/lib"
 	"testing"
 )
 
@@ -22,12 +23,12 @@ func getFixturePath(fileName string, t *testing.T) string {
 	return fullPath
 }
 
-func createParams(t *testing.T, fileName string) RunParameters {
+func createParams(t *testing.T, fileName string) lib.RunParameters {
 	fixture := getFixturePath(fileName, t)
-	return RunParameters{
-		appFilePath:           fixture,
-		logger:                zap.NewNop(),
-		timeoutInMilliseconds: 5000,
+	return lib.RunParameters{
+		AppFilePath:           fixture,
+		Logger:                zap.NewNop(),
+		TimeoutInMilliseconds: 5000,
 	}
 }
 
@@ -48,11 +49,11 @@ func TestOutputWithDelay(t *testing.T) {
 func TestInput(t *testing.T) {
 	t.Parallel()
 	params := createParams(t, "fixtures/input.sh")
-	step := Step{
-		line:  "Please enter your name: ",
-		input: "Richard",
+	step := lib.Step{
+		Line:  "Please enter your name: ",
+		Input: "Richard",
 	}
-	params.steps = []Step{step}
+	params.Steps = []lib.Step{step}
 	exitCode := Run(params)
 	assert.Equal(t, 0, exitCode)
 }
@@ -60,15 +61,15 @@ func TestInput(t *testing.T) {
 func TestDoubleInput(t *testing.T) {
 	t.Parallel()
 	params := createParams(t, "fixtures/double_input.sh")
-	firstInput := Step{
-		line:  "First number: ",
-		input: "1",
+	firstInput := lib.Step{
+		Line:  "First number: ",
+		Input: "1",
 	}
-	secondInput := Step{
-		line:  "Second number: ",
-		input: "2",
+	secondInput := lib.Step{
+		Line:  "Second number: ",
+		Input: "2",
 	}
-	params.steps = []Step{firstInput, secondInput}
+	params.Steps = []lib.Step{firstInput, secondInput}
 	exitCode := Run(params)
 	assert.Equal(t, 0, exitCode)
 }
@@ -77,11 +78,11 @@ func TestFailIfUnrecognisedStep(t *testing.T) {
 	t.Parallel()
 
 	params := createParams(t, "fixtures/output.sh")
-	output := Step{
-		line: "Hello, Rachel",
+	output := lib.Step{
+		Line: "Hello, Rachel",
 	}
-	params.steps = []Step{output}
-	params.timeoutInMilliseconds = 1000
+	params.Steps = []lib.Step{output}
+	params.TimeoutInMilliseconds = 1000
 	exitCode := Run(params)
 	assert.Equal(t, 1, exitCode)
 }
@@ -90,11 +91,11 @@ func TestFailIfUnexpectedStdin(t *testing.T) {
 	t.Parallel()
 
 	params := createParams(t, "fixtures/input.sh")
-	output := Step{
-		line: "Hello, Rachel",
+	output := lib.Step{
+		Line: "Hello, Rachel",
 	}
-	params.steps = []Step{output}
-	params.timeoutInMilliseconds = 1000
+	params.Steps = []lib.Step{output}
+	params.TimeoutInMilliseconds = 1000
 	exitCode := Run(params)
 	assert.Equal(t, 1, exitCode)
 }
