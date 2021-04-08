@@ -75,10 +75,6 @@ func (params *RunParameters) timeout() time.Duration {
 	return 30 * time.Millisecond
 }
 
-func (params *RunParameters) stepCount() int {
-	return len(params.steps)
-}
-
 func Run(params RunParameters) int {
 	// sync errors can be ignored: https://github.com/uber-go/zap/issues/328
 	defer params.logger.Sync()
@@ -129,7 +125,7 @@ func Run(params RunParameters) int {
 	_, err := process.Wait()
 	processError(err, logger, "error waiting for process to finish")
 
-	if params.stepCount() > 0 && currentStepIndex < params.stepCount() {
+	if currentStepIndex < len(params.steps) {
 		return CLI_ERROR
 	}
 
