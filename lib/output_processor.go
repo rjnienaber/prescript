@@ -7,15 +7,15 @@ import (
 	"time"
 )
 
-type LineProcessor struct {
+type OutputProcessor struct {
 	scanner *bufio.Scanner
 	logger  *zap.SugaredLogger
 }
 
-func NewLineProcessor(stdout io.ReadCloser, logger *zap.SugaredLogger) LineProcessor {
+func NewOutputProcessor(stdout io.ReadCloser, logger *zap.SugaredLogger) OutputProcessor {
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanBytes)
-	return LineProcessor{
+	return OutputProcessor{
 		scanner: scanner,
 		logger:  logger,
 	}
@@ -27,7 +27,7 @@ type TokenResult struct {
 	Error    int
 }
 
-func (processor *LineProcessor) NextChar(timeout time.Duration) TokenResult {
+func (processor *OutputProcessor) NextChar(timeout time.Duration) TokenResult {
 	scannerChannel := make(chan bool, 0)
 	go func() { scannerChannel <- processor.scanner.Scan() }()
 

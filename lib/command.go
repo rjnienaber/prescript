@@ -8,10 +8,10 @@ import (
 )
 
 type Command struct {
-	Stdin         io.WriteCloser
-	command       *exec.Cmd
-	LineProcessor LineProcessor
-	Logger        *zap.SugaredLogger
+	Stdin   io.WriteCloser
+	Stdout  io.ReadCloser
+	command *exec.Cmd
+	logger  *zap.SugaredLogger
 }
 
 func StartCommand(appPath string, args []string, logger *zap.SugaredLogger) Command {
@@ -31,17 +31,15 @@ func StartCommand(appPath string, args []string, logger *zap.SugaredLogger) Comm
 	ProcessError(err, logger, "failed to start app")
 	logger.Debug("started application")
 
-	lineProcessor := NewLineProcessor(stdout, logger)
-
 	return Command{
-		Stdin:         stdin,
-		command:       cmd,
-		LineProcessor: lineProcessor,
-		Logger:        logger,
+		Stdin:   stdin,
+		Stdout:  stdout,
+		command: cmd,
+		logger:  logger,
 	}
 }
 
 func (cmd *Command) WaitForExit() {
 	err := cmd.command.Wait()
-	ProcessError(err, cmd.Logger, "error waiting for process to finish")
+	ProcessError(err, cmd.logger, "error waiting for process to finish")
 }

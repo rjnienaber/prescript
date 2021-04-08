@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"prescript/lib"
-	"regexp"
 )
 
 func Run(params lib.RunParameters) int {
@@ -13,12 +12,12 @@ func Run(params lib.RunParameters) int {
 	defer logger.Sync()
 
 	command := lib.StartCommand(params.AppFilePath, params.Args, logger)
+	processor := lib.NewOutputProcessor(command.Stdout, logger)
+	matcher := lib.NewStepMatcher(command.Stdin, params.Steps, logger)
 
-	currentLine := ""
-	currentStepIndex := 0
 	timeout := params.Timeout()
 	for {
-		tokenResult := command.LineProcessor.NextChar(timeout)
+		tokenResult := processor.NextChar(timeout)
 		if tokenResult.Error != 0 {
 			return tokenResult.Error
 		}
@@ -30,23 +29,16 @@ func Run(params lib.RunParameters) int {
 		char := tokenResult.Token
 		fmt.Print(char)
 		if char == "\n" {
-			currentLine = ""
+			matcher.ResetLine()
 			continue
 		}
 
-		currentLine += char
-		if currentStepIndex < len(params.Steps) {
-			step := params.Steps[currentStepIndex]
-			if matchLine(command, step, currentLine) {
-				currentStepIndex += 1
-				currentLine = ""
-			}
-		}
+		matcher.Match(char)
 	}
 
 	command.WaitForExit()
 
-	if currentStepIndex < len(params.Steps) {
+	if matcher.MissingSteps() {
 		return lib.CLI_ERROR
 	}
 
@@ -73,21 +65,4 @@ func main() {
 	}
 	exitCode := Run(params)
 	os.Exit(exitCode)
-}
-
-func matchLine(command lib.Command, step lib.Step, currentLine string) bool {
-	matched, err := regexp.MatchString(step.Line, currentLine)
-	lib.ProcessError(err, command.Logger, "error matching line with regex")
-
-	if matched {
-		command.Logger.Debugf("matched current line '%s' with step '%s'", currentLine, step.Line)
-		if len(step.Input) > 0 {
-			fmt.Print(step.Input + "\n")
-			command.Logger.Debugf("writing input '%s' to stdin", step.Input)
-			_, err = command.Stdin.Write([]byte(step.Input + "\n"))
-			lib.ProcessError(err, command.Logger, "error writing to stdin")
-		}
-		return true
-	}
-	return false
 }
