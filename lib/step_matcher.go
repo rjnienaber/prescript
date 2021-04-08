@@ -43,15 +43,21 @@ func (matcher *StepMatcher) Match(char string) {
 }
 
 func (matcher *StepMatcher) matchLine(step Step) bool {
-	matched, err := regexp.MatchString(step.Line, matcher.currentLine)
-	ProcessError(err, matcher.logger, "error matching line with regex")
+	matched := false
+	if step.IsRegex {
+		regexMatched, err := regexp.MatchString(step.Line, matcher.currentLine)
+		ProcessError(err, matcher.logger, "error matching line with regex")
+		matched = regexMatched
+	} else {
+		matched = matcher.currentLine == step.Line
+	}
 
 	if matched {
 		matcher.logger.Debugf("matched current line '%s' with step '%s'", matcher.currentLine, step.Line)
 		if len(step.Input) > 0 {
 			fmt.Print(step.Input + "\n")
 			matcher.logger.Debugf("writing input '%s' to stdin", step.Input)
-			_, err = matcher.stdin.Write([]byte(step.Input + "\n"))
+			_, err := matcher.stdin.Write([]byte(step.Input + "\n"))
 			ProcessError(err, matcher.logger, "error writing to stdin")
 		}
 		return true

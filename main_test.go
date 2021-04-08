@@ -48,29 +48,40 @@ func TestOutputWithDelay(t *testing.T) {
 
 func TestInput(t *testing.T) {
 	t.Parallel()
+
 	params := createParams(t, "fixtures/input.sh")
-	step := lib.Step{
-		Line:  "Please enter your name: ",
-		Input: "Richard",
-	}
+	step := lib.Step{Line: "Please enter your name: ", Input: "Richard"}
 	params.Steps = []lib.Step{step}
+
 	exitCode := Run(params)
+
 	assert.Equal(t, 0, exitCode)
 }
 
 func TestDoubleInput(t *testing.T) {
 	t.Parallel()
+
 	params := createParams(t, "fixtures/double_input.sh")
-	firstInput := lib.Step{
-		Line:  "First number: ",
-		Input: "1",
-	}
-	secondInput := lib.Step{
-		Line:  "Second number: ",
-		Input: "2",
-	}
-	params.Steps = []lib.Step{firstInput, secondInput}
+	lineOne := lib.Step{Line: "First number: ", Input: "1"}
+	lineTwo := lib.Step{Line: "Second number: ", Input: "2"}
+	params.Steps = []lib.Step{lineOne, lineTwo}
+
 	exitCode := Run(params)
+
+	assert.Equal(t, 0, exitCode)
+}
+
+func TestDoubleInputRegex(t *testing.T) {
+	t.Parallel()
+
+	params := createParams(t, "fixtures/double_input.sh")
+	lineOne := lib.Step{Line: "First number: ", Input: "1"}
+	lineTwo := lib.Step{Line: "Second number: ", Input: "2"}
+	lineThree := lib.Step{Line: "Sum: \\d", IsRegex: true}
+	params.Steps = []lib.Step{lineOne, lineTwo, lineThree}
+
+	exitCode := Run(params)
+
 	assert.Equal(t, 0, exitCode)
 }
 
@@ -78,12 +89,12 @@ func TestFailIfUnrecognisedStep(t *testing.T) {
 	t.Parallel()
 
 	params := createParams(t, "fixtures/output.sh")
-	output := lib.Step{
-		Line: "Hello, Rachel",
-	}
+	output := lib.Step{Line: "Hello, Rachel"}
 	params.Steps = []lib.Step{output}
 	params.TimeoutInMilliseconds = 1000
+
 	exitCode := Run(params)
+
 	assert.Equal(t, 1, exitCode)
 }
 
@@ -91,11 +102,11 @@ func TestFailIfUnexpectedStdin(t *testing.T) {
 	t.Parallel()
 
 	params := createParams(t, "fixtures/input.sh")
-	output := lib.Step{
-		Line: "Hello, Rachel",
-	}
+	output := lib.Step{Line: "Hello, Rachel"}
 	params.Steps = []lib.Step{output}
 	params.TimeoutInMilliseconds = 1000
+
 	exitCode := Run(params)
+
 	assert.Equal(t, 1, exitCode)
 }

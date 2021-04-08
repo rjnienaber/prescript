@@ -6,8 +6,9 @@ import (
 )
 
 type Step struct {
-	Line  string
-	Input string
+	Line    string
+	Input   string
+	IsRegex bool
 }
 
 // TODO: merge struct for <script.json> with RunParameters
