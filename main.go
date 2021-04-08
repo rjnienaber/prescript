@@ -7,7 +7,6 @@ import (
 	"os"
 	"prescript/lib"
 	"regexp"
-	"time"
 )
 
 func Run(params lib.RunParameters) int {
@@ -19,26 +18,18 @@ func Run(params lib.RunParameters) int {
 
 	currentLine := ""
 	currentStepIndex := 0
+	timeout := params.Timeout()
 	for {
-		scannerChannel := make(chan bool, 0)
-		go func() { scannerChannel <- command.Scanner.Scan() }()
-
-		scannerResult := false
-		select {
-		case res := <-scannerChannel:
-			scannerResult = res
-		case <-time.After(params.Timeout()):
-			logger.Info("timed out waiting for cli to return output")
-			return lib.CLI_ERROR
+		tokenResult := command.LineProcessor.NextChar(timeout)
+		if tokenResult.Error != 0 {
+			return tokenResult.Error
 		}
 
-		logger.Debugf("last scanner result: '%t'", scannerResult)
-
-		if !scannerResult {
+		if tokenResult.Finished {
 			break
 		}
 
-		char := command.Scanner.Text()
+		char := tokenResult.Token
 		fmt.Print(char)
 		if char == "\n" {
 			currentLine = ""
@@ -55,8 +46,7 @@ func Run(params lib.RunParameters) int {
 		}
 	}
 
-	_, err := command.Process.Wait()
-	lib.ProcessError(err, logger, "error waiting for process to finish")
+	command.WaitForExit()
 
 	if currentStepIndex < len(params.Steps) {
 		return lib.CLI_ERROR

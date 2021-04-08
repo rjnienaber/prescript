@@ -1,20 +1,17 @@
 package lib
 
 import (
-	"bufio"
 	"go.uber.org/zap"
 	"io"
-	"os"
 	"os/exec"
 	"strings"
 )
 
 type Command struct {
-	Stdout  io.ReadCloser
-	Stdin   io.WriteCloser
-	Process *os.Process
-	Scanner *bufio.Scanner
-	Logger  *zap.SugaredLogger
+	Stdin         io.WriteCloser
+	command       *exec.Cmd
+	LineProcessor LineProcessor
+	Logger        *zap.SugaredLogger
 }
 
 func StartCommand(appPath string, args []string, logger *zap.SugaredLogger) Command {
@@ -34,14 +31,17 @@ func StartCommand(appPath string, args []string, logger *zap.SugaredLogger) Comm
 	ProcessError(err, logger, "failed to start app")
 	logger.Debug("started application")
 
-	scanner := bufio.NewScanner(stdout)
-	scanner.Split(bufio.ScanBytes)
+	lineProcessor := NewLineProcessor(stdout, logger)
 
 	return Command{
-		Stdout:  stdout,
-		Stdin:   stdin,
-		Process: cmd.Process,
-		Scanner: scanner,
-		Logger:  logger,
+		Stdin:         stdin,
+		command:       cmd,
+		LineProcessor: lineProcessor,
+		Logger:        logger,
 	}
+}
+
+func (cmd *Command) WaitForExit() {
+	err := cmd.command.Wait()
+	ProcessError(err, cmd.Logger, "error waiting for process to finish")
 }
