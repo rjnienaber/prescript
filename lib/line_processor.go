@@ -8,7 +8,7 @@ import (
 )
 
 type LineProcessor struct {
-	Scanner *bufio.Scanner
+	scanner *bufio.Scanner
 	logger  *zap.SugaredLogger
 }
 
@@ -16,7 +16,7 @@ func NewLineProcessor(stdout io.ReadCloser, logger *zap.SugaredLogger) LineProce
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanBytes)
 	return LineProcessor{
-		Scanner: scanner,
+		scanner: scanner,
 		logger:  logger,
 	}
 }
@@ -29,7 +29,7 @@ type TokenResult struct {
 
 func (processor *LineProcessor) NextChar(timeout time.Duration) TokenResult {
 	scannerChannel := make(chan bool, 0)
-	go func() { scannerChannel <- processor.Scanner.Scan() }()
+	go func() { scannerChannel <- processor.scanner.Scan() }()
 
 	scannerResult := false
 	select {
@@ -46,5 +46,5 @@ func (processor *LineProcessor) NextChar(timeout time.Duration) TokenResult {
 		return TokenResult{Finished: true}
 	}
 
-	return TokenResult{Token: processor.Scanner.Text()}
+	return TokenResult{Token: processor.scanner.Text()}
 }

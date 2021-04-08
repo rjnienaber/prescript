@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"go.uber.org/zap"
-	"io"
 	"os"
 	"prescript/lib"
 	"regexp"
@@ -39,7 +37,7 @@ func Run(params lib.RunParameters) int {
 		currentLine += char
 		if currentStepIndex < len(params.Steps) {
 			step := params.Steps[currentStepIndex]
-			if matchLine(currentLine, step.Line, step.Input, logger, command.Stdin) {
+			if matchLine(command, step, currentLine) {
 				currentStepIndex += 1
 				currentLine = ""
 			}
@@ -77,17 +75,17 @@ func main() {
 	os.Exit(exitCode)
 }
 
-func matchLine(currentLine string, currentStep string, input string, logger *zap.SugaredLogger, stdin io.WriteCloser) bool {
-	matched, err := regexp.MatchString(currentStep, currentLine)
-	lib.ProcessError(err, logger, "error matching line with regex")
+func matchLine(command lib.Command, step lib.Step, currentLine string) bool {
+	matched, err := regexp.MatchString(step.Line, currentLine)
+	lib.ProcessError(err, command.Logger, "error matching line with regex")
 
 	if matched {
-		logger.Debugf("matched current line '%s' with step '%s'", currentLine, currentStep)
-		if len(input) > 0 {
-			fmt.Print(input + "\n")
-			logger.Debugf("writing input '%s' to stdin", input)
-			_, err = stdin.Write([]byte(input + "\n"))
-			lib.ProcessError(err, logger, "error writing to stdin")
+		command.Logger.Debugf("matched current line '%s' with step '%s'", currentLine, step.Line)
+		if len(step.Input) > 0 {
+			fmt.Print(step.Input + "\n")
+			command.Logger.Debugf("writing input '%s' to stdin", step.Input)
+			_, err = command.Stdin.Write([]byte(step.Input + "\n"))
+			lib.ProcessError(err, command.Logger, "error writing to stdin")
 		}
 		return true
 	}
