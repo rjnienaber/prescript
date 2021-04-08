@@ -25,8 +25,9 @@ func getFixturePath(fileName string, t *testing.T) string {
 func createParams(t *testing.T, fileName string) RunParameters {
 	fixture := getFixturePath(fileName, t)
 	return RunParameters{
-		appFilePath: fixture,
-		logger:      zap.NewNop(),
+		appFilePath:           fixture,
+		logger:                zap.NewNop(),
+		timeoutInMilliseconds: 5000,
 	}
 }
 
@@ -72,9 +73,23 @@ func TestDoubleInput(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
-func TestFailIfUnexpectedStep(t *testing.T) {
+func TestFailIfUnrecognisedStep(t *testing.T) {
 	t.Parallel()
+
 	params := createParams(t, "fixtures/output.sh")
+	output := Step{
+		line: "Hello, Rachel",
+	}
+	params.steps = []Step{output}
+	params.timeoutInMilliseconds = 1000
+	exitCode := Run(params)
+	assert.Equal(t, 1, exitCode)
+}
+
+func TestFailIfUnexpectedStdin(t *testing.T) {
+	t.Parallel()
+
+	params := createParams(t, "fixtures/input.sh")
 	output := Step{
 		line: "Hello, Rachel",
 	}

@@ -9,8 +9,11 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 )
 
+const SUCCESS = 0
+const CLI_ERROR = 1
 const INTERNAL_ERROR = 2
 
 func processError(err error, logger *zap.SugaredLogger, message string) {
@@ -23,7 +26,7 @@ func processError(err error, logger *zap.SugaredLogger, message string) {
 func createLogger() *zap.Logger {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		fmt.Println("Could not create logger", err.Error())
+		fmt.Println("could not create logger", err.Error())
 		os.Exit(INTERNAL_ERROR)
 	}
 	return logger
@@ -33,15 +36,18 @@ func startCommand(appPath string, args []string, logger *zap.SugaredLogger) (io.
 	appArgs := strings.Join(args, ",")
 	cmd := exec.Command(appPath, appArgs)
 	stdout, err := cmd.StdoutPipe()
-	processError(err, logger, "Failed to capture stdout")
+	processError(err, logger, "failed to capture stdout")
+	logger.Debug("captured stdout pipe")
 
 	cmd.Stderr = cmd.Stdout
 
 	stdin, err := cmd.StdinPipe()
-	processError(err, logger, "Failed to capture stdin")
+	processError(err, logger, "failed to capture stdin")
+	logger.Debug("captured stdin pipe")
 
 	err = cmd.Start()
-	processError(err, logger, "Failed to start app")
+	processError(err, logger, "failed to start app")
+	logger.Debug("started application")
 
 	return stdout, stdin, cmd.Process
 }
@@ -51,15 +57,26 @@ type Step struct {
 	input string
 }
 
-// TODO: embed struct for <script.json> with RunParameters
+// TODO: merge struct for <script.json> with RunParameters
 // https://stackoverflow.com/a/40510391/9539
 type RunParameters struct {
 	appFilePath           string
 	args                  []string
-	timeoutInMilliseconds int
+	timeoutInMilliseconds int64
 	logger                *zap.Logger
 	steps                 []Step
 	exitCode              int
+}
+
+func (params *RunParameters) timeout() time.Duration {
+	if params.timeoutInMilliseconds != 0 {
+		return time.Duration(params.timeoutInMilliseconds) * time.Millisecond
+	}
+	return 30 * time.Millisecond
+}
+
+func (params *RunParameters) stepCount() int {
+	return len(params.steps)
 }
 
 func Run(params RunParameters) int {
@@ -72,32 +89,51 @@ func Run(params RunParameters) int {
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanBytes)
 	currentLine := ""
-	for scanner.Scan() {
-		// TODO: verify output steps
+	currentStepIndex := 0
+	for {
+		scannerChannel := make(chan bool, 0)
+		go func() { scannerChannel <- scanner.Scan() }()
+
+		scannerResult := false
+		select {
+		case res := <-scannerChannel:
+			scannerResult = res
+		case <-time.After(params.timeout()):
+			logger.Info("timed out waiting for cli to return output")
+			return CLI_ERROR
+		}
+
+		logger.Debugf("last scanner result: '%t'", scannerResult)
+
+		if !scannerResult {
+			break
+		}
+
 		char := scanner.Text()
 		fmt.Print(char)
 		if char == "\n" {
-			// TODO: should match lines with steps
 			currentLine = ""
 			continue
 		}
 
 		currentLine += char
-
-		for _, step := range params.steps {
-			// TODO: should not loop over steps that have already matched
+		if currentStepIndex < len(params.steps) {
+			step := params.steps[currentStepIndex]
 			if matchLine(currentLine, step.line, step.input, logger, stdin) {
+				currentStepIndex += 1
 				currentLine = ""
-				break
 			}
 		}
 	}
 
-	state, err := process.Wait()
-	processError(err, logger, "Error waiting for process to finish")
+	_, err := process.Wait()
+	processError(err, logger, "error waiting for process to finish")
 
-	exitCode := state.ExitCode()
-	return exitCode
+	if params.stepCount() > 0 && currentStepIndex < params.stepCount() {
+		return CLI_ERROR
+	}
+
+	return SUCCESS
 }
 
 func main() {
@@ -122,14 +158,18 @@ func main() {
 	os.Exit(exitCode)
 }
 
-func matchLine(currentLine string, promptToMatch string, input string, logger *zap.SugaredLogger, stdin io.WriteCloser) bool {
-	matched, err := regexp.MatchString(promptToMatch, currentLine)
-	processError(err, logger, "Error matching line with regex")
+func matchLine(currentLine string, currentStep string, input string, logger *zap.SugaredLogger, stdin io.WriteCloser) bool {
+	matched, err := regexp.MatchString(currentStep, currentLine)
+	processError(err, logger, "error matching line with regex")
 
 	if matched {
-		fmt.Print(input + "\n")
-		_, err = stdin.Write([]byte(input + "\n"))
-		processError(err, logger, "Error writing to stdin")
+		logger.Debugf("matched current line '%s' with step '%s'", currentLine, currentStep)
+		if len(input) > 0 {
+			fmt.Print(input + "\n")
+			logger.Debugf("writing input '%s' to stdin", input)
+			_, err = stdin.Write([]byte(input + "\n"))
+			processError(err, logger, "error writing to stdin")
+		}
 		return true
 	}
 	return false
