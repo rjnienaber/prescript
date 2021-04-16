@@ -16,6 +16,7 @@ type Script struct {
 	Version string `json:"version"`
 	Runs    []struct {
 		Timestamp time.Time `json:"timestamp"`
+		Command   string    `json:"command"`
 		Args      []string  `json:"args"`
 		ExitCode  int       `json:"exitCode"`
 		Steps     []struct {
@@ -46,6 +47,6 @@ func NewScript(json string) (Script, error) {
 		validationErrors = append(validationErrors, validationError.String())
 	}
 
-	err = errors.New("JSON Validation Errors:\n" + strings.Join(validationErrors, "\n"))
+	err = errors.New("Script validation errors:\n" + strings.Join(validationErrors, "\n"))
 	return Script{}, err
 }
