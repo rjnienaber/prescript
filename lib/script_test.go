@@ -78,10 +78,10 @@ func TestValidationFailsForIncorrectType(t *testing.T) {
 	_, err := NewScript(basicScript)
 	assert.Error(t, err)
 	expected := `Script validation errors:
-version: Invalid type. Expected: string, given: integer
-runs.0: Additional property cmd is not allowed
+runs.0.exitCode: Invalid type. Expected: number, given: string
 runs.0.timestamp: Does not match format 'date-time'
-runs.0.exitCode: Invalid type. Expected: number, given: string`
+runs.0: Additional property cmd is not allowed
+version: Invalid type. Expected: string, given: integer`
 	assert.Equal(t, expected, err.Error())
 }
 

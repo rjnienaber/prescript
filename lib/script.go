@@ -5,6 +5,7 @@ import (
 	json2 "encoding/json"
 	"errors"
 	schema "github.com/xeipuuv/gojsonschema"
+	"sort"
 	"strings"
 	"time"
 )
@@ -46,6 +47,9 @@ func NewScript(json string) (Script, error) {
 	for _, validationError := range result.Errors() {
 		validationErrors = append(validationErrors, validationError.String())
 	}
+
+	// validation errors can be returned in random order so we order them
+	sort.Strings(validationErrors)
 
 	err = errors.New("Script validation errors:\n" + strings.Join(validationErrors, "\n"))
 	return Script{}, err
