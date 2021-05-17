@@ -15,7 +15,7 @@
       "items": {
         "type": "object",
         "required": [
-          "args",
+          "arguments",
           "exitCode",
           "steps"
         ],
@@ -24,10 +24,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "command": {
+          "executable": {
             "type": "string"
           },
-          "args": {
+          "arguments": {
             "type": "array",
             "items": {
               "type": "string"

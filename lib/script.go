@@ -16,11 +16,11 @@ var SCRIPT_SCHEMA []byte
 type Script struct {
 	Version string `json:"version"`
 	Runs    []struct {
-		Timestamp time.Time `json:"timestamp"`
-		Command   string    `json:"command"`
-		Args      []string  `json:"args"`
-		ExitCode  int       `json:"exitCode"`
-		Steps     []struct {
+		Timestamp  time.Time `json:"timestamp"`
+		Executable string    `json:"executable"`
+		Arguments  []string  `json:"arguments"`
+		ExitCode   int       `json:"exitCode"`
+		Steps      []struct {
 			Line    string `json:"line"`
 			Input   string `json:"input,omitempty"`
 			IsRegex bool   `json:"isRegex,omitempty"`

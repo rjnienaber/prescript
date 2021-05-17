@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-type Command struct {
+type Executable struct {
 	Stdin   io.WriteCloser
 	Stdout  io.ReadCloser
 	command *exec.Cmd
 	logger  *zap.SugaredLogger
 }
 
-func StartCommand(appPath string, args []string, logger *zap.SugaredLogger) Command {
+func StartExecutable(appPath string, args []string, logger *zap.SugaredLogger) Executable {
 	appArgs := strings.Join(args, ",")
 	cmd := exec.Command(appPath, appArgs)
 	stdout, err := cmd.StdoutPipe()
@@ -31,7 +31,7 @@ func StartCommand(appPath string, args []string, logger *zap.SugaredLogger) Comm
 	ProcessError(err, logger, "failed to start app")
 	logger.Debug("started application")
 
-	return Command{
+	return Executable{
 		Stdin:   stdin,
 		Stdout:  stdout,
 		command: cmd,
@@ -39,7 +39,7 @@ func StartCommand(appPath string, args []string, logger *zap.SugaredLogger) Comm
 	}
 }
 
-func (cmd *Command) WaitForExit() {
-	err := cmd.command.Wait()
-	ProcessError(err, cmd.logger, "error waiting for process to finish")
+func (executable *Executable) WaitForExit() {
+	err := executable.command.Wait()
+	ProcessError(err, executable.logger, "error waiting for process to finish")
 }

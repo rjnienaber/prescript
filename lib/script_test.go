@@ -6,14 +6,13 @@ import (
 	"time"
 )
 
-// TODO: change to executable
 func TestBasicScript(t *testing.T) {
 	basicScript := `{
   "version": "0.1",
   "runs": [{
     "timestamp": "2021-04-08T23:21:42Z",
-	"command": "/bin/ls",
-    "args": [
+	"executable": "/bin/ls",
+    "arguments": [
       "-l"
     ],
     "exitCode": 0,
@@ -34,8 +33,8 @@ func TestBasicScript(t *testing.T) {
 	run := script.Runs[0]
 	assert.Equal(t, "2021-04-08T23:21:42Z", run.Timestamp.Format(time.RFC3339))
 
-	assert.Equal(t, "/bin/ls", run.Command)
-	assert.Equal(t, []string{"-l"}, run.Args)
+	assert.Equal(t, "/bin/ls", run.Executable)
+	assert.Equal(t, []string{"-l"}, run.Arguments)
 	assert.Equal(t, 0, run.ExitCode)
 
 	assert.Len(t, run.Steps, 2)
@@ -63,7 +62,7 @@ func TestValidationFailsForIncorrectType(t *testing.T) {
   "runs": [{
     "timestamp": "2021-04-23:21:42Z",
 	"cmd": "ls",
-    "args": [
+    "arguments": [
       "-l"
     ],
     "exitCode": "zero",

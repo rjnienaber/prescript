@@ -7,9 +7,9 @@ func RunPlay(params RunParameters) int {
 	// sync errors can be ignored: https://github.com/uber-go/zap/issues/328
 	defer logger.Sync()
 
-	command := StartCommand(params.AppFilePath, params.Args, logger)
-	processor := NewOutputProcessor(command.Stdout, logger)
-	matcher := NewStepMatcher(command.Stdin, params.Steps, logger)
+	executable := StartExecutable(params.AppFilePath, params.Args, logger)
+	processor := NewOutputProcessor(executable.Stdout, logger)
+	matcher := NewStepMatcher(executable.Stdin, params.Steps, logger)
 
 	timeout := params.Timeout()
 	for {
@@ -32,7 +32,7 @@ func RunPlay(params RunParameters) int {
 		matcher.Match(char)
 	}
 
-	command.WaitForExit()
+	executable.WaitForExit()
 
 	if matcher.MissingSteps() {
 		return CLI_ERROR
