@@ -15,45 +15,44 @@ func testParseArgs(args []string) (*Config, error) {
 func TestConfigPlayQuiet(t *testing.T) {
 	config, err := testParseArgs([]string{"play", "/tmp/script.json", "--quiet"})
 	assert.NoError(t, err)
-	assert.Equal(t, config.Subcommand, Play)
+	assert.Equal(t, Play, config.Subcommand)
 	assert.True(t, config.Play.Quiet)
 }
 
 func TestConfigDontFail(t *testing.T) {
 	config, err := testParseArgs([]string{"play", "/tmp/script.json", "--dont-fail"})
 	assert.NoError(t, err)
-	assert.Equal(t, config.Subcommand, Play)
+	assert.Equal(t, Play, config.Subcommand)
 	assert.True(t, config.Play.DontFail)
 }
 
 func TestConfigVerbose(t *testing.T) {
 	config, err := testParseArgs([]string{"play", "/tmp/script.json", "--verbose"})
 	assert.NoError(t, err)
-	assert.Equal(t, config.Subcommand, Play)
+	assert.Equal(t, Play, config.Subcommand)
 	assert.True(t, config.Play.Verbose)
 }
 
 func TestConfigTimeout(t *testing.T) {
 	config, err := testParseArgs([]string{"play", "/tmp/script.json", "--timeout=10s"})
 	assert.NoError(t, err)
-	assert.Equal(t, config.Subcommand, Play)
-	assert.Equal(t, config.Play.Timeout.Seconds(), 10.0)
-	assert.Equal(t, config.Play.ScriptFile, "/tmp/script.json")
+	assert.Equal(t, Play, config.Subcommand)
+	assert.Equal(t, 10.0, config.Play.Timeout.Seconds())
+	assert.Equal(t, "/tmp/script.json", config.Play.ScriptFile)
 }
 
 func TestConfigScriptFile(t *testing.T) {
 	config, err := testParseArgs([]string{"play", "/tmp/script.json"})
 	assert.NoError(t, err)
-	assert.Equal(t, config.Subcommand, Play)
-	assert.Equal(t, config.Play.ScriptFile, "/tmp/script.json")
+	assert.Equal(t, Play, config.Subcommand)
+	assert.Equal(t, "/tmp/script.json", config.Play.ScriptFile)
 }
 
 func TestConfigAcceptsOptionalExecutable(t *testing.T) {
 	config, err := testParseArgs([]string{"play", "/tmp/script.json", "/bin/ls"})
 	assert.NoError(t, err)
-	assert.Equal(t, config.Subcommand, Play)
-	assert.Equal(t, config.Play.ScriptFile, "/tmp/script.json")
-	assert.Equal(t, config.Play.Command, "/bin/ls")
+	assert.Equal(t, Play, config.Subcommand)
+	assert.Equal(t, "/bin/ls", config.Play.Executable)
 }
 
 func TestConfigRequiresScriptfile(t *testing.T) {
@@ -62,15 +61,43 @@ func TestConfigRequiresScriptfile(t *testing.T) {
 }
 
 func TestParsesRecordCommand(t *testing.T) {
-	t.Skip("not implemented")
-	config, _ := testParseArgs([]string{"record"})
-	assert.Equal(t, config.Subcommand, Record)
+	config, err := testParseArgs([]string{"record", "/tmp/script.json", "/bin/ls"})
+	assert.NoError(t, err)
+	assert.Equal(t, Record, config.Subcommand)
+	assert.Equal(t, "/tmp/script.json", config.Record.ScriptFile)
+	assert.Equal(t, "/bin/ls", config.Record.Executable)
+	assert.Equal(t, []string{}, config.Record.Arguments)
+}
+
+func TestParsesRecordIgnoreOutput(t *testing.T) {
+	config, err := testParseArgs([]string{"record", "/tmp/script.json", "/bin/ls", "--ignoreOutput"})
+	assert.NoError(t, err)
+	assert.Equal(t, Record, config.Subcommand)
+	assert.Equal(t, "/tmp/script.json", config.Record.ScriptFile)
+	assert.Equal(t, "/bin/ls", config.Record.Executable)
+	assert.True(t, config.Record.IgnoreOutput)
+}
+
+func TestParsesRecordExecutableArguments(t *testing.T) {
+	config, err := testParseArgs([]string{"record", "/tmp/script.json", "/bin/ls", "--", "-r", "-l"})
+	assert.NoError(t, err)
+	assert.Equal(t, Record, config.Subcommand)
+	assert.Equal(t, "/tmp/script.json", config.Record.ScriptFile)
+	assert.Equal(t, "/bin/ls", config.Record.Executable)
+	assert.Equal(t, []string{"-r", "-l"}, config.Record.Arguments)
+}
+
+func TestParsesRecordExecutableArguments2(t *testing.T) {
+	config, err := testParseArgs([]string{"record", "/tmp/script.json", "/bin/ls", "--", "record", "--ignoreOutput"})
+	assert.NoError(t, err)
+	assert.Equal(t, Record, config.Subcommand)
+	assert.Equal(t, "/tmp/script.json", config.Record.ScriptFile)
+	assert.Equal(t, "/bin/ls", config.Record.Executable)
+	assert.Equal(t, []string{"record", "--ignoreOutput"}, config.Record.Arguments)
 }
 
 func TestNoArgs(t *testing.T) {
-	t.Skip("not implemented")
-}
-
-func TestFormatsHelp(t *testing.T) {
-	t.Skip("not implemented")
+	config, err := testParseArgs([]string{})
+	assert.NoError(t, err)
+	assert.Equal(t, NotSpecified, config.Subcommand)
 }
