@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// TODO: change to executable
 func TestBasicScript(t *testing.T) {
 	basicScript := `{
   "version": "0.1",

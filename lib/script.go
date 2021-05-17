@@ -30,8 +30,7 @@ type Script struct {
 
 func NewScript(json string) (Script, error) {
 	schemaLoader := schema.NewBytesLoader(SCRIPT_SCHEMA)
-	jsonBytes := []byte(json)
-	documentLoader := schema.NewBytesLoader(jsonBytes)
+	documentLoader := schema.NewStringLoader(json)
 	result, err := schema.Validate(schemaLoader, documentLoader)
 	if err != nil {
 		return Script{}, err
@@ -39,8 +38,8 @@ func NewScript(json string) (Script, error) {
 
 	if result.Valid() {
 		var script Script
-		json2.Unmarshal([]byte(json), &script)
-		return script, nil
+		err = json2.Unmarshal([]byte(json), &script)
+		return script, err
 	}
 
 	validationErrors := []string{}
