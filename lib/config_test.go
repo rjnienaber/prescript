@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func testParseArgs(args []string) (*Config, error) {
+func testParseArgs(args []string) (Config, error) {
 	newArgs := append([]string{"prescript"}, args...)
 	os.Args = newArgs
 	return GetConfig()

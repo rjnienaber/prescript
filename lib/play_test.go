@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func getFixturePath(fileName string, t *testing.T) string {
@@ -22,37 +23,43 @@ func getFixturePath(fileName string, t *testing.T) string {
 	return fullPath
 }
 
-func createParams(t *testing.T, fileName string) RunParameters {
-	fixture := getFixturePath(fileName, t)
-	return RunParameters{
-		AppFilePath:           fixture,
-		Logger:                zap.NewNop(),
-		TimeoutInMilliseconds: 5000,
+func getTimeout(timeoutInMilliseconds int) time.Duration {
+	return time.Duration(timeoutInMilliseconds) * time.Millisecond
+}
+
+func createConfig(t *testing.T, fileName string) Config {
+	executable := getFixturePath(fileName, t)
+	return Config{
+		Subcommand: Play,
+		Play: PlayConfig{
+			Timeout:    getTimeout(5000),
+			Executable: executable,
+		},
+		Logger: zap.NewNop().Sugar(),
 	}
 }
 
 func TestOutput(t *testing.T) {
 	t.Parallel()
-	params := createParams(t, "fixtures/output.sh")
-	exitCode := RunPlay(params)
+	config := createConfig(t, "fixtures/output.sh")
+	exitCode := RunPlay(config, Run{})
 	assert.Equal(t, 0, exitCode)
 }
 
 func TestOutputWithDelay(t *testing.T) {
 	t.Parallel()
-	params := createParams(t, "fixtures/output_with_delay.sh")
-	exitCode := RunPlay(params)
+	config := createConfig(t, "fixtures/output_with_delay.sh")
+	exitCode := RunPlay(config, Run{})
 	assert.Equal(t, 0, exitCode)
 }
 
 func TestInput(t *testing.T) {
 	t.Parallel()
 
-	params := createParams(t, "fixtures/input.sh")
-	step := Step{Line: "Please enter your name: ", Input: "Richard"}
-	params.Steps = []Step{step}
+	config := createConfig(t, "fixtures/input.sh")
+	run := Run{Steps: []Step{{Line: "Please enter your name: ", Input: "Richard"}}}
 
-	exitCode := RunPlay(params)
+	exitCode := RunPlay(config, run)
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -60,12 +67,13 @@ func TestInput(t *testing.T) {
 func TestDoubleInput(t *testing.T) {
 	t.Parallel()
 
-	params := createParams(t, "fixtures/double_input.sh")
-	lineOne := Step{Line: "First number: ", Input: "1"}
-	lineTwo := Step{Line: "Second number: ", Input: "2"}
-	params.Steps = []Step{lineOne, lineTwo}
+	config := createConfig(t, "fixtures/double_input.sh")
+	run := Run{Steps: []Step{
+		{Line: "First number: ", Input: "1"},
+		{Line: "Second number: ", Input: "2"},
+	}}
 
-	exitCode := RunPlay(params)
+	exitCode := RunPlay(config, run)
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -73,13 +81,14 @@ func TestDoubleInput(t *testing.T) {
 func TestDoubleInputRegex(t *testing.T) {
 	t.Parallel()
 
-	params := createParams(t, "fixtures/double_input.sh")
-	lineOne := Step{Line: "First number: ", Input: "1"}
-	lineTwo := Step{Line: "Second number: ", Input: "2"}
-	lineThree := Step{Line: "Sum: \\d", IsRegex: true}
-	params.Steps = []Step{lineOne, lineTwo, lineThree}
+	config := createConfig(t, "fixtures/double_input.sh")
+	run := Run{Steps: []Step{
+		{Line: "First number: ", Input: "1"},
+		{Line: "Second number: ", Input: "2"},
+		{Line: "Sum: \\d", IsRegex: true},
+	}}
 
-	exitCode := RunPlay(params)
+	exitCode := RunPlay(config, run)
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -87,12 +96,13 @@ func TestDoubleInputRegex(t *testing.T) {
 func TestFailIfUnrecognisedStep(t *testing.T) {
 	t.Parallel()
 
-	params := createParams(t, "fixtures/output.sh")
-	output := Step{Line: "Hello, Rachel"}
-	params.Steps = []Step{output}
-	params.TimeoutInMilliseconds = 1000
+	config := createConfig(t, "fixtures/output.sh")
+	config.Play.Timeout = getTimeout(1000)
+	run := Run{Steps: []Step{
+		{Line: "Hello, Rachel"},
+	}}
 
-	exitCode := RunPlay(params)
+	exitCode := RunPlay(config, run)
 
 	assert.Equal(t, 1, exitCode)
 }
@@ -100,12 +110,17 @@ func TestFailIfUnrecognisedStep(t *testing.T) {
 func TestFailIfUnexpectedStdin(t *testing.T) {
 	t.Parallel()
 
-	params := createParams(t, "fixtures/input.sh")
-	output := Step{Line: "Hello, Rachel"}
-	params.Steps = []Step{output}
-	params.TimeoutInMilliseconds = 1000
+	config := createConfig(t, "fixtures/input.sh")
+	config.Play.Timeout = getTimeout(1000)
+	run := Run{Steps: []Step{
+		{Line: "Hello, Rachel"},
+	}}
 
-	exitCode := RunPlay(params)
+	exitCode := RunPlay(config, run)
 
 	assert.Equal(t, 1, exitCode)
+}
+
+func TestPassingArguments(t *testing.T) {
+	t.Skip()
 }

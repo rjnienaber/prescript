@@ -25,7 +25,7 @@ func TestBasicScript(t *testing.T) {
     }]
   }]
 }`
-	script, err := NewScript(basicScript)
+	script, err := NewScriptFromBytes([]byte(basicScript))
 	assert.NoError(t, err)
 	assert.Equal(t, "0.1", script.Version)
 	assert.Len(t, script.Runs, 1)
@@ -52,7 +52,7 @@ func TestValidationFailsForMissingProperties(t *testing.T) {
 	basicScript := `{
   "version": "0.1",
 }`
-	_, err := NewScript(basicScript)
+	_, err := NewScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 }
 
@@ -75,7 +75,7 @@ func TestValidationFailsForIncorrectType(t *testing.T) {
     }]
   }]
 }`
-	_, err := NewScript(basicScript)
+	_, err := NewScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 	expected := `Script validation errors:
 runs.0.exitCode: Invalid type. Expected: number, given: string
@@ -91,7 +91,7 @@ func TestValidationFailsForIncorrectVersion(t *testing.T) {
   "runs": []
   }]
 }`
-	_, err := NewScript(basicScript)
+	_, err := NewScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 	expected := `Script validation errors:
 version: version must be one of the following: "0.1"`

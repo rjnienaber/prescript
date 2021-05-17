@@ -1,19 +1,34 @@
 package lib
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
-func RunPlay(params RunParameters) int {
-	logger := params.Logger.Sugar()
-	// sync errors can be ignored: https://github.com/uber-go/zap/issues/328
-	defer logger.Sync()
+func getExecutableFilePath(config Config, run Run) (string, error) {
+	if config.Play.Executable != "" {
+		return config.Play.Executable, nil
+	}
 
-	executable := StartExecutable(params.AppFilePath, params.Args, logger)
-	processor := NewOutputProcessor(executable.Stdout, logger)
-	matcher := NewStepMatcher(executable.Stdin, params.Steps, logger)
+	if run.Executable != "" {
+		return run.Executable, nil
+	}
 
-	timeout := params.Timeout()
+	return "", errors.New("could not find executable path in argument or script file")
+}
+
+func RunPlay(config Config, run Run) int {
+	executablePath, err := getExecutableFilePath(config, run)
+	if err != nil {
+		return USER_ERROR
+	}
+
+	executable := StartExecutable(executablePath, run.Arguments, config.Logger)
+	processor := NewOutputProcessor(executable.Stdout, config.Logger)
+	matcher := NewStepMatcher(executable.Stdin, run.Steps, config.Logger)
+
 	for {
-		tokenResult := processor.NextChar(timeout)
+		tokenResult := processor.NextChar(config.Play.Timeout)
 		if tokenResult.Error != 0 {
 			return tokenResult.Error
 		}
