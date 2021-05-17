@@ -8,7 +8,7 @@ import (
 func main() {
 	config, err := lib.GetConfig()
 	if err != nil || config.Subcommand == lib.NotSpecified {
-		os.Exit(lib.INTERNAL_ERROR)
+		os.Exit(lib.USER_ERROR)
 	}
 
 	config.Logger.Debug("successfully parsed arguments and flags")

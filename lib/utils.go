@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	SUCCESS        = 0
-	CLI_ERROR      = 1
-	INTERNAL_ERROR = 2
+	SUCCESS = iota
+	CLI_ERROR
+	INTERNAL_ERROR
+	USER_ERROR
 )
 
 func ProcessError(err error, logger *zap.SugaredLogger, message string) {
