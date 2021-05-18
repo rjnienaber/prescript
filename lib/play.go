@@ -23,7 +23,11 @@ func RunPlay(config Config, run Run) int {
 		return USER_ERROR
 	}
 
-	executable := StartExecutable(executablePath, run.Arguments, config.Logger)
+	executable, err := StartExecutable(executablePath, run.Arguments, config.Logger)
+	if err != nil {
+		return INTERNAL_ERROR
+	}
+
 	processor := NewOutputProcessor(executable.Stdout, config.Logger)
 	matcher := NewStepMatcher(executable.Stdin, run.Steps, config.Logger)
 
@@ -44,10 +48,16 @@ func RunPlay(config Config, run Run) int {
 			continue
 		}
 
-		matcher.Match(char)
+		err := matcher.Match(char)
+		if err != nil {
+			return INTERNAL_ERROR
+		}
 	}
 
-	executable.WaitForExit()
+	err = executable.WaitForExit()
+	if err != nil {
+		return INTERNAL_ERROR
+	}
 
 	if matcher.MissingSteps() {
 		config.Logger.Debug("executable finished but there are missing steps")

@@ -97,3 +97,24 @@ func TestValidationFailsForIncorrectVersion(t *testing.T) {
 version: version must be one of the following: "0.1"`
 	assert.Equal(t, expected, err.Error())
 }
+
+func TestHandlesInvalidRegex(t *testing.T) {
+	basicScript := `{
+  "version": "0.1",
+  "runs": [{
+    "arguments": [
+      "-l"
+    ],
+    "exitCode": 0,
+    "steps": [{
+      "line": "hello (w+",
+      "isRegex": true
+    }]
+  }]
+}`
+	_, err := NewScriptFromBytes([]byte(basicScript))
+	assert.Error(t, err)
+	expected := `Script validation errors:
+runs.0.steps.0.line: error parsing regexp: missing closing ): ` + "`hello (w+`"
+	assert.Equal(t, expected, err.Error())
+}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go.uber.org/zap"
 	"io"
-	"regexp"
 )
 
 type StepMatcher struct {
@@ -31,23 +30,26 @@ func (matcher *StepMatcher) ResetLine() {
 	matcher.currentLine = ""
 }
 
-func (matcher *StepMatcher) Match(char string) {
+func (matcher *StepMatcher) Match(char string) error {
 	matcher.currentLine += char
 	if matcher.currentStepIndex < len(matcher.steps) {
 		step := matcher.steps[matcher.currentStepIndex]
-		if matcher.matchLine(step) {
+		matched, err := matcher.matchLine(step)
+		if err != nil {
+			return err
+		}
+		if matched {
 			matcher.currentStepIndex += 1
 			matcher.ResetLine()
 		}
 	}
+	return nil
 }
 
-func (matcher *StepMatcher) matchLine(step Step) bool {
+func (matcher *StepMatcher) matchLine(step Step) (bool, error) {
 	matched := false
 	if step.IsRegex {
-		regexMatched, err := regexp.MatchString(step.Line, matcher.currentLine)
-		ProcessError(err, matcher.logger, "error matching line with regex")
-		matched = regexMatched
+		matched = step.LineRegex.MatchString(matcher.currentLine)
 	} else {
 		matched = matcher.currentLine == step.Line
 	}
@@ -58,9 +60,12 @@ func (matcher *StepMatcher) matchLine(step Step) bool {
 			fmt.Print(step.Input + "\n")
 			matcher.logger.Debugf("writing input '%s' to stdin", step.Input)
 			_, err := matcher.stdin.Write([]byte(step.Input + "\n"))
-			ProcessError(err, matcher.logger, "error writing to stdin")
+			if err != nil {
+				matcher.logger.Debug("error writing user input to stdin: ", err)
+				return false, err
+			}
 		}
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }

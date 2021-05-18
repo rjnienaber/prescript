@@ -4,8 +4,10 @@ import (
 	_ "embed"
 	json2 "encoding/json"
 	"errors"
+	"fmt"
 	schema "github.com/xeipuuv/gojsonschema"
 	"io/ioutil"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -15,9 +17,10 @@ import (
 var SCRIPT_SCHEMA []byte
 
 type Step struct {
-	Line    string `json:"line"`
-	Input   string `json:"input,omitempty"`
-	IsRegex bool   `json:"isRegex,omitempty"`
+	Line      string `json:"line"`
+	LineRegex regexp.Regexp
+	Input     string `json:"input,omitempty"`
+	IsRegex   bool   `json:"isRegex,omitempty"`
 }
 
 type Run struct {
@@ -31,6 +34,25 @@ type Run struct {
 type Script struct {
 	Version string `json:"version"`
 	Runs    []Run  `json:"runs"`
+}
+
+func validateRegexes(runs []Run) []string {
+	var regexErrors []string
+	// validate regexes should they exist
+	for runIndex, run := range runs {
+		for stepIndex, step := range run.Steps {
+			if step.IsRegex {
+				regex, err := regexp.Compile(step.Line)
+				if err != nil {
+					regexError := fmt.Sprintf("runs.%d.steps.%d.line: %s", runIndex, stepIndex, err.Error())
+					regexErrors = append(regexErrors, regexError)
+				} else {
+					step.LineRegex = *regex
+				}
+			}
+		}
+	}
+	return regexErrors
 }
 
 func NewScriptFromFile(filePath string) (Script, error) {
@@ -49,16 +71,27 @@ func NewScriptFromBytes(json []byte) (Script, error) {
 		return Script{}, err
 	}
 
+	var regexErrors []string
 	if result.Valid() {
 		var script Script
-		err = json2.Unmarshal([]byte(json), &script)
-		return script, err
+		err = json2.Unmarshal(json, &script)
+
+		if err != nil {
+			return Script{}, err
+		}
+
+		regexErrors = validateRegexes(script.Runs)
+		if len(regexErrors) == 0 {
+			return script, err
+		}
 	}
 
 	validationErrors := []string{}
 	for _, validationError := range result.Errors() {
 		validationErrors = append(validationErrors, validationError.String())
 	}
+
+	validationErrors = append(validationErrors, regexErrors...)
 
 	// validation errors can be returned in random order so we order them
 	sort.Strings(validationErrors)

@@ -20,7 +20,10 @@ func main() {
 
 	if config.Subcommand == lib.Play {
 		script, err := lib.NewScriptFromFile(config.Play.ScriptFile)
-		lib.ProcessError(err, config.Logger, "script file couldn't be parsed")
+		if err != nil {
+			logger.Debug("script file couldn't be parsed:", err)
+			os.Exit(lib.USER_ERROR)
+		}
 		os.Exit(lib.RunPlay(config, script.Runs[0]))
 	}
 }

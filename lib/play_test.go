@@ -5,6 +5,7 @@ import (
 	"go.uber.org/zap"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -82,10 +83,11 @@ func TestDoubleInputRegex(t *testing.T) {
 	t.Parallel()
 
 	config := createConfig(t, "fixtures/double_input.sh")
+	regex := regexp.MustCompile("Sum: \\d")
 	run := Run{Steps: []Step{
 		{Line: "First number: ", Input: "1"},
 		{Line: "Second number: ", Input: "2"},
-		{Line: "Sum: \\d", IsRegex: true},
+		{Line: "Sum: \\d", LineRegex: *regex, IsRegex: true},
 	}}
 
 	exitCode := RunPlay(config, run)
@@ -101,6 +103,22 @@ func TestPassingArguments(t *testing.T) {
 		Steps:     []Step{{Line: "Hello, Rachel"}},
 		Arguments: []string{"Rachel"},
 	}
+
+	exitCode := RunPlay(config, run)
+
+	assert.Equal(t, 0, exitCode)
+}
+
+func TestSpecifyExecutableInScript(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/input_arguments.sh")
+	run := Run{
+		Executable: config.Play.Executable,
+		Steps:      []Step{{Line: "Hello, Rachel"}},
+		Arguments:  []string{"Rachel"},
+	}
+	config.Play.Executable = ""
 
 	exitCode := RunPlay(config, run)
 
