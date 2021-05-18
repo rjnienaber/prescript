@@ -93,6 +93,20 @@ func TestDoubleInputRegex(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
+func TestPassingArguments(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/input_arguments.sh")
+	run := Run{
+		Steps:     []Step{{Line: "Hello, Rachel"}},
+		Arguments: []string{"Rachel"},
+	}
+
+	exitCode := RunPlay(config, run)
+
+	assert.Equal(t, 0, exitCode)
+}
+
 func TestFailIfUnrecognisedStep(t *testing.T) {
 	t.Parallel()
 
@@ -119,8 +133,4 @@ func TestFailIfUnexpectedStdin(t *testing.T) {
 	exitCode := RunPlay(config, run)
 
 	assert.Equal(t, 1, exitCode)
-}
-
-func TestPassingArguments(t *testing.T) {
-	t.Skip()
 }

@@ -50,6 +50,7 @@ func RunPlay(config Config, run Run) int {
 	executable.WaitForExit()
 
 	if matcher.MissingSteps() {
+		config.Logger.Debug("executable finished but there are missing steps")
 		return CLI_ERROR
 	}
 
