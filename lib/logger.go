@@ -3,10 +3,27 @@ package lib
 import (
 	"fmt"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-func createLogger() (*zap.Logger, error) {
-	logger, err := zap.NewDevelopment()
+type Logger struct {
+	zapLogger *zap.SugaredLogger
+}
+
+func createLogger(level string) (*zap.Logger, error) {
+	var zapLevel zap.AtomicLevel
+	switch level {
+	case "debug":
+		zapLevel = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	case "info":
+		zapLevel = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	default:
+		return zap.NewNop(), nil // turn logging off for all other values
+	}
+
+	config := zap.NewDevelopmentConfig()
+	config.Level = zapLevel
+	logger, err := config.Build()
 	if err != nil {
 		fmt.Println("could not create zapLogger", err.Error())
 		return nil, err
@@ -14,12 +31,8 @@ func createLogger() (*zap.Logger, error) {
 	return logger, nil
 }
 
-type Logger struct {
-	zapLogger *zap.SugaredLogger
-}
-
-func NewLogger() (Logger, error) {
-	logger, err := createLogger()
+func NewLogger(level string) (Logger, error) {
+	logger, err := createLogger(level)
 	if err != nil {
 		return Logger{}, err
 	}

@@ -16,7 +16,7 @@ const (
 type PlayConfig struct {
 	Quiet          bool
 	DontFail       bool
-	Verbose        bool
+	LogLevel       string
 	Timeout        time.Duration
 	ScriptFile     string
 	ExecutablePath string

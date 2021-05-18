@@ -26,11 +26,11 @@ func TestConfigDontFail(t *testing.T) {
 	assert.True(t, config.Play.DontFail)
 }
 
-func TestConfigVerbose(t *testing.T) {
-	config, err := testParseArgs([]string{"play", "/tmp/script.json", "--verbose"})
+func TestConfigLogLevel(t *testing.T) {
+	config, err := testParseArgs([]string{"play", "/tmp/script.json", "--log-level=info"})
 	assert.NoError(t, err)
 	assert.Equal(t, Play, config.Subcommand)
-	assert.True(t, config.Play.Verbose)
+	assert.Equal(t, "info", config.Play.LogLevel)
 }
 
 func TestConfigTimeout(t *testing.T) {
