@@ -23,23 +23,4 @@ func main() {
 		lib.ProcessError(err, config.Logger, "script file couldn't be parsed")
 		os.Exit(lib.RunPlay(config, script.Runs[0]))
 	}
-
-	//rollStep := lib.Step{
-	//	Line:  ``,
-	//	Input: "5000",
-	//}
-	//
-	//tryAgainStep := lib.Step{
-	//	Line:  ``,
-	//	Input: "N",
-	//}
-
-	//params := lib.RunParameters{
-	//	AppFilePath: os.Args[1],
-	//	Args:        os.Args[2:],
-	//	Logger:      zapLogger,
-	//	Steps:       []lib.Step{rollStep, tryAgainStep},
-	//}
-	//exitCode := lib.Play(params)
-	//os.Exit(exitCode)
 }
