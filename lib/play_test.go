@@ -2,7 +2,6 @@ package lib
 
 import (
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -36,7 +35,7 @@ func createConfig(t *testing.T, fileName string) Config {
 			Timeout:    getTimeout(5000),
 			Executable: executable,
 		},
-		Logger: zap.NewNop().Sugar(),
+		Logger: Logger{},
 	}
 }
 

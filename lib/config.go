@@ -2,7 +2,6 @@ package lib
 
 import (
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 	"time"
 )
 
@@ -34,7 +33,7 @@ type Config struct {
 	Subcommand subcommand
 	Play       PlayConfig
 	Record     RecordConfig
-	Logger     *zap.SugaredLogger
+	Logger     Logger
 }
 
 func createPlaySubCommand(config *Config) *cobra.Command {

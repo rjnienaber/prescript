@@ -2,17 +2,16 @@ package lib
 
 import (
 	"bufio"
-	"go.uber.org/zap"
 	"io"
 	"time"
 )
 
 type OutputProcessor struct {
 	scanner *bufio.Scanner
-	logger  *zap.SugaredLogger
+	logger  Logger
 }
 
-func NewOutputProcessor(stdout io.ReadCloser, logger *zap.SugaredLogger) OutputProcessor {
+func NewOutputProcessor(stdout io.ReadCloser, logger Logger) OutputProcessor {
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanBytes)
 	return OutputProcessor{

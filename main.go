@@ -6,10 +6,11 @@ import (
 )
 
 func main() {
-	zapLogger := lib.CreateLogger()
-	logger := zapLogger.Sugar()
-	// sync errors can be ignored: https://github.com/uber-go/zap/issues/328
-	defer logger.Sync()
+	logger, err := lib.NewLogger()
+	if err != nil {
+		os.Exit(lib.INTERNAL_ERROR)
+	}
+	defer logger.Close()
 
 	config, err := lib.GetConfig()
 	if err != nil || config.Subcommand == lib.NotSpecified {

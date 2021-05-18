@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"go.uber.org/zap"
 	"io"
 	"os/exec"
 	"strings"
@@ -11,10 +10,10 @@ type Executable struct {
 	Stdin   io.WriteCloser
 	Stdout  io.ReadCloser
 	command *exec.Cmd
-	logger  *zap.SugaredLogger
+	logger  Logger
 }
 
-func StartExecutable(appPath string, args []string, logger *zap.SugaredLogger) (Executable, error) {
+func StartExecutable(appPath string, args []string, logger Logger) (Executable, error) {
 	appArgs := strings.Join(args, ",")
 	executable := Executable{}
 

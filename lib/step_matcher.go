@@ -2,19 +2,18 @@ package lib
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"io"
 )
 
 type StepMatcher struct {
 	currentLine      string
 	currentStepIndex int
-	logger           *zap.SugaredLogger
+	logger           Logger
 	stdin            io.WriteCloser
 	steps            []Step
 }
 
-func NewStepMatcher(stdin io.WriteCloser, steps []Step, logger *zap.SugaredLogger) StepMatcher {
+func NewStepMatcher(stdin io.WriteCloser, steps []Step, logger Logger) StepMatcher {
 	return StepMatcher{
 		logger: logger,
 		stdin:  stdin,
