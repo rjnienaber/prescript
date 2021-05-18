@@ -52,7 +52,7 @@ func TestConfigAcceptsOptionalExecutable(t *testing.T) {
 	config, err := testParseArgs([]string{"play", "/tmp/script.json", "/bin/ls"})
 	assert.NoError(t, err)
 	assert.Equal(t, Play, config.Subcommand)
-	assert.Equal(t, "/bin/ls", config.Play.Executable)
+	assert.Equal(t, "/bin/ls", config.Play.ExecutablePath)
 }
 
 func TestConfigRequiresScriptfile(t *testing.T) {
@@ -65,7 +65,7 @@ func TestParsesRecordCommand(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, Record, config.Subcommand)
 	assert.Equal(t, "/tmp/script.json", config.Record.ScriptFile)
-	assert.Equal(t, "/bin/ls", config.Record.Executable)
+	assert.Equal(t, "/bin/ls", config.Record.ExecutablePath)
 	assert.Equal(t, []string{}, config.Record.Arguments)
 }
 
@@ -74,7 +74,7 @@ func TestParsesRecordIgnoreOutput(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, Record, config.Subcommand)
 	assert.Equal(t, "/tmp/script.json", config.Record.ScriptFile)
-	assert.Equal(t, "/bin/ls", config.Record.Executable)
+	assert.Equal(t, "/bin/ls", config.Record.ExecutablePath)
 	assert.True(t, config.Record.IgnoreOutput)
 }
 
@@ -83,7 +83,7 @@ func TestParsesRecordExecutableArguments(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, Record, config.Subcommand)
 	assert.Equal(t, "/tmp/script.json", config.Record.ScriptFile)
-	assert.Equal(t, "/bin/ls", config.Record.Executable)
+	assert.Equal(t, "/bin/ls", config.Record.ExecutablePath)
 	assert.Equal(t, []string{"-r", "-l"}, config.Record.Arguments)
 }
 
@@ -92,7 +92,7 @@ func TestParsesRecordExecutableArguments2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, Record, config.Subcommand)
 	assert.Equal(t, "/tmp/script.json", config.Record.ScriptFile)
-	assert.Equal(t, "/bin/ls", config.Record.Executable)
+	assert.Equal(t, "/bin/ls", config.Record.ExecutablePath)
 	assert.Equal(t, []string{"record", "--ignoreOutput"}, config.Record.Arguments)
 }
 

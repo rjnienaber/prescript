@@ -14,19 +14,19 @@ const (
 )
 
 type PlayConfig struct {
-	Quiet      bool
-	DontFail   bool
-	Verbose    bool
-	Timeout    time.Duration
-	ScriptFile string
-	Executable string
+	Quiet          bool
+	DontFail       bool
+	Verbose        bool
+	Timeout        time.Duration
+	ScriptFile     string
+	ExecutablePath string
 }
 
 type RecordConfig struct {
-	IgnoreOutput bool
-	ScriptFile   string
-	Executable   string
-	Arguments    []string
+	IgnoreOutput   bool
+	ScriptFile     string
+	ExecutablePath string
+	Arguments      []string
 }
 
 type Config struct {
@@ -46,7 +46,7 @@ func createPlaySubCommand(config *Config) *cobra.Command {
 			config.Subcommand = Play
 			config.Play.ScriptFile = args[0]
 			if len(args) > 1 {
-				config.Play.Executable = args[1]
+				config.Play.ExecutablePath = args[1]
 			}
 		},
 	}
@@ -69,7 +69,7 @@ func createRecordSubCommand(config *Config) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			config.Subcommand = Record
 			config.Record.ScriptFile = args[0]
-			config.Record.Executable = args[1]
+			config.Record.ExecutablePath = args[1]
 			config.Record.Arguments = args[2:]
 		},
 	}

@@ -28,12 +28,12 @@ func getTimeout(timeoutInMilliseconds int) time.Duration {
 }
 
 func createConfig(t *testing.T, fileName string) Config {
-	executable := getFixturePath(fileName, t)
+	executablePath := getFixturePath(fileName, t)
 	return Config{
 		Subcommand: Play,
 		Play: PlayConfig{
-			Timeout:    getTimeout(5000),
-			Executable: executable,
+			Timeout:        getTimeout(5000),
+			ExecutablePath: executablePath,
 		},
 		Logger: Logger{},
 	}
@@ -113,11 +113,11 @@ func TestSpecifyExecutableInScript(t *testing.T) {
 
 	config := createConfig(t, "fixtures/input_arguments.sh")
 	run := Run{
-		Executable: config.Play.Executable,
+		Executable: config.Play.ExecutablePath,
 		Steps:      []Step{{Line: "Hello, Rachel"}},
 		Arguments:  []string{"Rachel"},
 	}
-	config.Play.Executable = ""
+	config.Play.ExecutablePath = ""
 
 	exitCode := RunPlay(config, run)
 

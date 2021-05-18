@@ -6,8 +6,8 @@ import (
 )
 
 func getExecutableFilePath(config Config, run Run) (string, error) {
-	if config.Play.Executable != "" {
-		return config.Play.Executable, nil
+	if config.Play.ExecutablePath != "" {
+		return config.Play.ExecutablePath, nil
 	}
 
 	if run.Executable != "" {
