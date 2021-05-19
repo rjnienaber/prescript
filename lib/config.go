@@ -63,8 +63,8 @@ func createPlaySubCommand(config *Config) *cobra.Command {
 func createRecordSubCommand(config *Config) *cobra.Command {
 	var recordCmd = &cobra.Command{
 		Use:   "record [script file] [optional executable]",
-		Short: "runs a cli and records ouput and responses",
-		Long:  "runs a cli and records ouput and responses",
+		Short: "runs a cli and records output and responses",
+		Long:  "runs a cli and records output and responses",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			config.Subcommand = RecordCommand
