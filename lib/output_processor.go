@@ -27,7 +27,7 @@ type TokenResult struct {
 }
 
 func (processor *OutputProcessor) NextChar(timeout time.Duration) TokenResult {
-	scannerChannel := make(chan bool, 0)
+	scannerChannel := make(chan bool)
 	go func() { scannerChannel <- processor.scanner.Scan() }()
 
 	scannerResult := false

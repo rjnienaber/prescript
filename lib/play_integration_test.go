@@ -82,7 +82,7 @@ func TestDoubleInputRegex(t *testing.T) {
 	t.Parallel()
 
 	config := createConfig(t, "fixtures/double_input.sh")
-	regex := regexp.MustCompile("Sum: \\d")
+	regex := regexp.MustCompile(`Sum: \d`)
 	run := Run{Steps: []Step{
 		{Line: "First number: ", Input: "1"},
 		{Line: "Second number: ", Input: "2"},
