@@ -31,6 +31,12 @@ func main() {
 			logger.Debug("script file couldn't be parsed:", err)
 			os.Exit(lib.USER_ERROR)
 		}
-		os.Exit(lib.RunPlay(config, script.Runs[0]))
+
+		result := lib.RunPlay(config, script.Runs[0])
+		if config.Play.DontFail {
+			os.Exit(lib.SUCCESS)
+		} else {
+			os.Exit(result)
+		}
 	}
 }
