@@ -1,0 +1,15 @@
+{
+  "version": "0.1",
+  "runs": [{
+    "executable": "vintbas",
+    "arguments": ["examples/dice/dice.bas"],
+    "exitCode": 0,
+    "steps": [{
+      "line": "HOW MANY ROLLS? ",
+      "input": "5000"
+    }, {
+      "line": "TRY AGAIN? ",
+      "input": "N"
+    }]
+  }]
+}

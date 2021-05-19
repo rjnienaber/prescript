@@ -39,8 +39,8 @@ type Config struct {
 func createPlaySubCommand(config *Config) *cobra.Command {
 	var playCmd = &cobra.Command{
 		Use:   "play [script file] [optional executable]",
-		Short: "runs prescripted responses against an interactive cli",
-		Long:  "runs through a predefined script of responses to an interactive cli",
+		Short: "Runs prescripted responses against an interactive cli",
+		Long:  "Runs through a predefined script of responses to an interactive cli",
 		Args:  cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
 			config.Subcommand = PlayCommand
@@ -63,8 +63,8 @@ func createPlaySubCommand(config *Config) *cobra.Command {
 func createRecordSubCommand(config *Config) *cobra.Command {
 	var recordCmd = &cobra.Command{
 		Use:   "record [script file] [optional executable]",
-		Short: "runs a cli and records output and responses",
-		Long:  "runs a cli and records output and responses",
+		Short: "Runs a cli app and records output and responses",
+		Long:  "Runs a cli app and records output and responses",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			config.Subcommand = RecordCommand
@@ -86,8 +86,8 @@ func GetConfig() (Config, error) {
 
 	var rootCmd = &cobra.Command{
 		Use:   "prescript [cmd] [script file] [optional executable]",
-		Short: "record and playback responses to an interactive cli",
-		Long:  "record and playback responses to an interactive cli",
+		Short: "Record and playback responses to an interactive cli",
+		Long:  "Record and playback responses to an interactive cli",
 	}
 	rootCmd.Args = cobra.MinimumNArgs(1)
 	rootCmd.AddCommand(playCmd)
