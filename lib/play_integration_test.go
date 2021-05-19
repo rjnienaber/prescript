@@ -30,7 +30,7 @@ func getTimeout(timeoutInMilliseconds int) time.Duration {
 func createConfig(t *testing.T, fileName string) Config {
 	executablePath := getFixturePath(fileName, t)
 	return Config{
-		Subcommand: Play,
+		Subcommand: PlayCommand,
 		Play: PlayConfig{
 			Timeout:        getTimeout(5000),
 			ExecutablePath: executablePath,

@@ -8,9 +8,9 @@ import (
 type subcommand int
 
 const (
-	NotSpecified subcommand = iota
-	Play
-	Record
+	NoCommand subcommand = iota
+	PlayCommand
+	RecordCommand
 )
 
 type PlayConfig struct {
@@ -43,7 +43,7 @@ func createPlaySubCommand(config *Config) *cobra.Command {
 		Long:  "runs through a predefined script of responses to an interactive cli",
 		Args:  cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
-			config.Subcommand = Play
+			config.Subcommand = PlayCommand
 			config.Play.ScriptFile = args[0]
 			if len(args) > 1 {
 				config.Play.ExecutablePath = args[1]
@@ -53,7 +53,7 @@ func createPlaySubCommand(config *Config) *cobra.Command {
 
 	playCmd.Flags().BoolVarP(&config.Play.Quiet, "quiet", "q", false, "quiet mode, no output")
 	playCmd.Flags().BoolVarP(&config.Play.DontFail, "dont-fail", "d", false, "dont fail on external command failures")
-	playCmd.Flags().BoolVarP(&config.Play.Verbose, "verbose", "v", false, "output all logs")
+	playCmd.Flags().StringVarP(&config.Play.LogLevel, "log-level", "l", "none", "log level to use with logs (e.g. none, debug, info)")
 
 	defaultTimeout, _ := time.ParseDuration("30s")
 	playCmd.Flags().DurationVarP(&config.Play.Timeout, "timeout", "t", defaultTimeout, "timeout waiting for output from external command")
@@ -67,7 +67,7 @@ func createRecordSubCommand(config *Config) *cobra.Command {
 		Long:  "runs a cli and records ouput and responses",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			config.Subcommand = Record
+			config.Subcommand = RecordCommand
 			config.Record.ScriptFile = args[0]
 			config.Record.ExecutablePath = args[1]
 			config.Record.Arguments = args[2:]
