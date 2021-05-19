@@ -11,13 +11,15 @@ type StepMatcher struct {
 	logger           Logger
 	stdin            io.WriteCloser
 	steps            []Step
+	quiet            bool
 }
 
-func NewStepMatcher(stdin io.WriteCloser, steps []Step, logger Logger) StepMatcher {
+func NewStepMatcher(stdin io.WriteCloser, steps []Step, config Config) StepMatcher {
 	return StepMatcher{
-		logger: logger,
+		logger: config.Logger,
 		stdin:  stdin,
 		steps:  steps,
+		quiet:  config.Play.Quiet,
 	}
 }
 
@@ -56,7 +58,10 @@ func (matcher *StepMatcher) matchLine(step Step) (bool, error) {
 	if matched {
 		matcher.logger.Debugf("matched current line '%s' with step '%s'", matcher.currentLine, step.Line)
 		if len(step.Input) > 0 {
-			fmt.Print(step.Input + "\n")
+			if !matcher.quiet {
+				fmt.Print(step.Input + "\n")
+			}
+
 			matcher.logger.Debugf("writing input '%s' to stdin", step.Input)
 			_, err := matcher.stdin.Write([]byte(step.Input + "\n"))
 			if err != nil {

@@ -29,7 +29,7 @@ func RunPlay(config Config, run Run) int {
 	}
 
 	processor := NewOutputProcessor(executable.Stdout, config.Logger)
-	matcher := NewStepMatcher(executable.Stdin, run.Steps, config.Logger)
+	matcher := NewStepMatcher(executable.Stdin, run.Steps, config)
 
 	for {
 		tokenResult := processor.NextChar(config.Play.Timeout)
@@ -42,7 +42,10 @@ func RunPlay(config Config, run Run) int {
 		}
 
 		char := tokenResult.Token
-		fmt.Print(char)
+		if !config.Play.Quiet {
+			fmt.Print(char)
+		}
+
 		if char == "\n" {
 			matcher.ResetLine()
 			continue
