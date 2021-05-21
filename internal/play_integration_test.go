@@ -1,4 +1,4 @@
-package lib
+package internal
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	cfg "prescript/lib/config"
+	cfg "prescript/internal/config"
 )
 
 func getFixturePath(fileName string, t *testing.T) string {
@@ -17,7 +17,7 @@ func getFixturePath(fileName string, t *testing.T) string {
 		t.Errorf("failed to get current working directory: %s", err.Error())
 	}
 
-	fullPath, err := filepath.Abs(filepath.Join(cwd, "..", fileName))
+	fullPath, err := filepath.Abs(filepath.Join(cwd, "..", "test", fileName))
 	if err != nil {
 		t.Errorf("failed to get absolute path for fixture: %s", err.Error())
 	}

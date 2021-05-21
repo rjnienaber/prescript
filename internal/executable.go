@@ -1,11 +1,11 @@
-package lib
+package internal
 
 import (
 	"io"
 	"os/exec"
 	"strings"
 
-	cfg "prescript/lib/config"
+	cfg "prescript/internal/config"
 )
 
 type Executable struct {

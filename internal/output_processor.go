@@ -1,11 +1,11 @@
-package lib
+package internal
 
 import (
 	"bufio"
 	"io"
 	"time"
 
-	cfg "prescript/lib/config"
+	cfg "prescript/internal/config"
 )
 
 type OutputProcessor struct {

@@ -1,4 +1,4 @@
-package lib
+package internal
 
 const (
 	SUCCESS = iota

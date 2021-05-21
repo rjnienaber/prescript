@@ -1,10 +1,10 @@
-package lib
+package internal
 
 import (
 	"fmt"
 	"io"
 
-	cfg "prescript/lib/config"
+	cfg "prescript/internal/config"
 )
 
 type StepMatcher struct {

@@ -1,10 +1,10 @@
-package lib
+package internal
 
 import (
 	"errors"
 	"fmt"
 
-	cfg "prescript/lib/config"
+	cfg "prescript/internal/config"
 )
 
 func getExecutableFilePath(config cfg.Config, run Run) (string, error) {
