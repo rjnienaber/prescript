@@ -71,7 +71,7 @@ sys	0m0.000s
 
 The script acts effectively like a state machine, with each step the next state that is being 
 waited on. Since `prescript` doesn't use a timing mechanism to know when to input data, the 
-automation script should finish as quickly as the cli can execute it's work.
+automation script should finish as quickly as the cli can execute its work.
 
 ### Commands & Options
 #### `play`

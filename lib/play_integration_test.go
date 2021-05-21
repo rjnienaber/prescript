@@ -124,6 +124,27 @@ func TestSpecifyExecutableInScript(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
+func TestDuplicatedLinesInScriptt(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/duplicated_lines.sh")
+	run := Run{
+		Executable: config.Play.ExecutablePath,
+		Steps: []Step{
+			{Line: "the same line repeated"},
+			{Line: "the same line repeated"},
+			{Line: "Please enter your name: ", Input: "Harold"},
+			{Line: "Your name is Harold"},
+			{Line: "more lines repeated"},
+			{Line: "more lines repeated"},
+			{Line: "success!"},
+		},
+	}
+	exitCode := RunPlay(config, run)
+
+	assert.Equal(t, 0, exitCode)
+}
+
 func TestFailIfUnrecognisedStep(t *testing.T) {
 	t.Parallel()
 
