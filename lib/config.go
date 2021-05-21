@@ -1,8 +1,9 @@
 package lib
 
 import (
-	"github.com/spf13/cobra"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 type subcommand int
@@ -55,7 +56,7 @@ func createPlaySubCommand(config *Config) *cobra.Command {
 	playCmd.Flags().BoolVarP(&config.Play.DontFail, "dont-fail", "d", false, "dont fail on external command failures")
 	playCmd.Flags().StringVarP(&config.Play.LogLevel, "log-level", "l", "none", "log level to use with logs (e.g. none, debug, info)")
 
-	defaultTimeout, _ := time.ParseDuration("30s")
+	defaultTimeout := 30 * time.Second
 	playCmd.Flags().DurationVarP(&config.Play.Timeout, "timeout", "t", defaultTimeout, "timeout waiting for output from external command")
 	return playCmd
 }

@@ -2,8 +2,9 @@ package main
 
 import (
 	"os"
-	"prescript/lib"
 	"strings"
+
+	"prescript/lib"
 )
 
 func main() {

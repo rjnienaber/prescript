@@ -1,12 +1,13 @@
 package lib
 
 import (
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func getFixturePath(fileName string, t *testing.T) string {

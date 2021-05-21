@@ -5,16 +5,17 @@ import (
 	json2 "encoding/json"
 	"errors"
 	"fmt"
-	schema "github.com/xeipuuv/gojsonschema"
 	"io/ioutil"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	schema "github.com/xeipuuv/gojsonschema"
 )
 
 //go:embed "script_schema.json"
-var SCRIPT_SCHEMA []byte
+var ScriptSchema []byte
 
 type Step struct {
 	Line      string `json:"line"`
@@ -64,7 +65,7 @@ func NewScriptFromFile(filePath string) (Script, error) {
 }
 
 func NewScriptFromBytes(json []byte) (Script, error) {
-	schemaLoader := schema.NewBytesLoader(SCRIPT_SCHEMA)
+	schemaLoader := schema.NewBytesLoader(ScriptSchema)
 	documentLoader := schema.NewBytesLoader(json)
 	result, err := schema.Validate(schemaLoader, documentLoader)
 	if err != nil {
