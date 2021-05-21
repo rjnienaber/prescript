@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type Logger struct {
+type CustomLogger struct {
 	zapLogger *zap.SugaredLogger
 }
 
@@ -32,39 +32,42 @@ func createLogger(level string) (*zap.Logger, error) {
 	return logger, nil
 }
 
-func NewLogger(level string) (Logger, error) {
+func NewLogger(level string) (CustomLogger, error) {
 	logger, err := createLogger(level)
 	if err != nil {
-		return Logger{}, err
+		return CustomLogger{}, err
 	}
-	return Logger{zapLogger: logger.Sugar()}, nil
+	return CustomLogger{zapLogger: logger.Sugar()}, nil
 }
 
-func (logger *Logger) Close() {
+func (logger *CustomLogger) Close() {
 	// sync errors can be ignored: https://github.com/uber-go/zap/issues/328
-	logger.zapLogger.Sync()
+	err := logger.zapLogger.Sync()
+	if err != nil {
+		return
+	}
 }
 
-func (logger *Logger) Debug(args ...interface{}) {
+func (logger *CustomLogger) Debug(args ...interface{}) {
 	if logger.zapLogger != nil {
 		logger.zapLogger.Debug(args)
 	}
 
 }
 
-func (logger *Logger) Debugf(template string, args ...interface{}) {
+func (logger *CustomLogger) Debugf(template string, args ...interface{}) {
 	if logger.zapLogger != nil {
 		logger.zapLogger.Debugf(template, args)
 	}
 }
 
-func (logger *Logger) Error(args ...interface{}) {
+func (logger *CustomLogger) Error(args ...interface{}) {
 	if logger.zapLogger != nil {
 		logger.zapLogger.Error(args)
 	}
 }
 
-func (logger *Logger) Info(args ...interface{}) {
+func (logger *CustomLogger) Info(args ...interface{}) {
 	if logger.zapLogger != nil {
 		logger.zapLogger.Info(args)
 	}

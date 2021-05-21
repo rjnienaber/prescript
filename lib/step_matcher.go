@@ -3,18 +3,20 @@ package lib
 import (
 	"fmt"
 	"io"
+
+	cfg "prescript/lib/config"
 )
 
 type StepMatcher struct {
 	currentLine      string
 	currentStepIndex int
-	logger           Logger
+	logger           cfg.Logger
 	stdin            io.WriteCloser
 	steps            []Step
 	quiet            bool
 }
 
-func NewStepMatcher(stdin io.WriteCloser, steps []Step, config Config) StepMatcher {
+func NewStepMatcher(stdin io.WriteCloser, steps []Step, config cfg.Config) StepMatcher {
 	return StepMatcher{
 		logger: config.Logger,
 		stdin:  stdin,

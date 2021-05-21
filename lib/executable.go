@@ -4,16 +4,18 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+
+	cfg "prescript/lib/config"
 )
 
 type Executable struct {
 	Stdin   io.WriteCloser
 	Stdout  io.ReadCloser
 	command *exec.Cmd
-	logger  Logger
+	logger  cfg.Logger
 }
 
-func StartExecutable(appPath string, args []string, logger Logger) (Executable, error) {
+func StartExecutable(appPath string, args []string, logger cfg.Logger) (Executable, error) {
 	appArgs := strings.Join(args, ",")
 	executable := Executable{}
 

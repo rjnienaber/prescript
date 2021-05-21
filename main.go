@@ -5,16 +5,17 @@ import (
 	"strings"
 
 	"prescript/lib"
+	cfg "prescript/lib/config"
 )
 
 func main() {
-	config, err := lib.GetConfig()
-	if err != nil || config.Subcommand == lib.NoCommand {
+	config, err := cfg.GetConfig()
+	if err != nil || config.Subcommand == cfg.NoCommand {
 		os.Exit(lib.USER_ERROR)
 	}
 
 	level := "none"
-	if config.Subcommand == lib.PlayCommand {
+	if config.Subcommand == cfg.PlayCommand {
 		level = strings.ToLower(config.Play.LogLevel)
 	}
 
@@ -24,9 +25,9 @@ func main() {
 	}
 	defer logger.Close()
 	logger.Debug("successfully parsed arguments and flags")
-	config.Logger = logger
+	config.Logger = &logger
 
-	if config.Subcommand == lib.PlayCommand {
+	if config.Subcommand == cfg.PlayCommand {
 		script, err := lib.NewScriptFromFile(config.Play.ScriptFile)
 		if err != nil {
 			logger.Debug("script file couldn't be parsed:", err)

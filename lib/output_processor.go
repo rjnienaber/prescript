@@ -4,14 +4,16 @@ import (
 	"bufio"
 	"io"
 	"time"
+
+	cfg "prescript/lib/config"
 )
 
 type OutputProcessor struct {
 	scanner *bufio.Scanner
-	logger  Logger
+	logger  cfg.Logger
 }
 
-func NewOutputProcessor(stdout io.ReadCloser, logger Logger) OutputProcessor {
+func NewOutputProcessor(stdout io.ReadCloser, logger cfg.Logger) OutputProcessor {
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanBytes)
 	return OutputProcessor{

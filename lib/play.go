@@ -3,9 +3,11 @@ package lib
 import (
 	"errors"
 	"fmt"
+
+	cfg "prescript/lib/config"
 )
 
-func getExecutableFilePath(config Config, run Run) (string, error) {
+func getExecutableFilePath(config cfg.Config, run Run) (string, error) {
 	if config.Play.ExecutablePath != "" {
 		return config.Play.ExecutablePath, nil
 	}
@@ -17,7 +19,7 @@ func getExecutableFilePath(config Config, run Run) (string, error) {
 	return "", errors.New("could not find executable path in argument or script file")
 }
 
-func RunPlay(config Config, run Run) int {
+func RunPlay(config cfg.Config, run Run) int {
 	executablePath, err := getExecutableFilePath(config, run)
 	if err != nil {
 		return USER_ERROR

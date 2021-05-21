@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	cfg "prescript/lib/config"
 )
 
 func getFixturePath(fileName string, t *testing.T) string {
@@ -28,15 +29,15 @@ func getTimeout(timeoutInMilliseconds int) time.Duration {
 	return time.Duration(timeoutInMilliseconds) * time.Millisecond
 }
 
-func createConfig(t *testing.T, fileName string) Config {
+func createConfig(t *testing.T, fileName string) cfg.Config {
 	executablePath := getFixturePath(fileName, t)
-	return Config{
-		Subcommand: PlayCommand,
-		Play: PlayConfig{
+	return cfg.Config{
+		Subcommand: cfg.PlayCommand,
+		Play: cfg.PlayConfig{
 			Timeout:        getTimeout(5000),
 			ExecutablePath: executablePath,
 		},
-		Logger: Logger{},
+		Logger: &CustomLogger{},
 	}
 }
 
