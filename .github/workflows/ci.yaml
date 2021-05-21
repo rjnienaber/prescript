@@ -1,0 +1,35 @@
+name: ci
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v2
+      - name: setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16'
+      - name: go version
+        run: go version
+      - name: cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: make dependencies
+        run: make dependencies
+      - name: go format
+        run: make format
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+      - name: make test
+        run: make test
+      - name: make build_dev
+        run: make build_dev
+      - name: make examples
+        run: make examples
