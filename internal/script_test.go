@@ -95,6 +95,7 @@ func TestValidationFailsForIncorrectVersion(t *testing.T) {
 	_, err := NewScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 	expected := `Script validation errors:
+runs: Array must have at least 1 items
 version: version must be one of the following: "0.1"`
 	assert.Equal(t, expected, err.Error())
 }
