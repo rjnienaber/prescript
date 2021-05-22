@@ -59,14 +59,23 @@ func RunPlay(config cfg.Config, run Run) int {
 		}
 	}
 
-	err = executable.WaitForExit()
-	if err != nil {
+	exitCode, err := executable.WaitForExit()
+	if matcher.MissingSteps() {
+		logger.Debug("executable finished but there are missing steps")
+		return CLI_ERROR
+	}
+
+	// we rely on exit code in the script to know whether to fail on errors
+	if run.ExitCode == 0 && err != nil {
+		executable.logger.Error("error waiting for process to finish: ", err)
 		return INTERNAL_ERROR
 	}
 
-	if matcher.MissingSteps() {
-		config.Logger.Debug("executable finished but there are missing steps")
-		return CLI_ERROR
+	// we rely on exit code in the script to know whether to fail on errors
+	if exitCode != run.ExitCode {
+		msg := fmt.Sprintf("exit code from script (%d) did not match exit code from executable (%d)", run.ExitCode, exitCode)
+		logger.Info(msg)
+		return INTERNAL_ERROR
 	}
 
 	return SUCCESS

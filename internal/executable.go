@@ -48,14 +48,13 @@ func StartExecutable(appPath string, args []string, logger cfg.Logger) (Executab
 	executable.Stdout = stdout
 	executable.command = cmd
 	executable.logger = logger
+	executable.command.ProcessState.ExitCode()
 
 	return executable, nil
 }
 
-func (executable *Executable) WaitForExit() error {
+func (executable *Executable) WaitForExit() (int, error) {
 	err := executable.command.Wait()
-	if err != nil {
-		executable.logger.Error("error waiting for process to finish: ", err)
-	}
-	return err
+	exitCode := executable.command.ProcessState.ExitCode()
+	return exitCode, err
 }

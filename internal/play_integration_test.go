@@ -147,6 +147,22 @@ func TestDuplicatedLinesInScriptt(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
+func TestCheckExitCode(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/exit_code.sh")
+	run := Run{
+		Executable: config.Play.ExecutablePath,
+		Steps: []Step{
+			{Line: "Exit Code test"},
+		},
+		ExitCode: 1,
+	}
+	exitCode := RunPlay(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}
+
 func TestFailIfUnrecognisedStep(t *testing.T) {
 	t.Parallel()
 
