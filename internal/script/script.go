@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/rjnienaber/prescript/internal/config"
+	"github.com/rjnienaber/prescript/internal/utils"
 	schema "github.com/xeipuuv/gojsonschema"
-	"prescript/internal/config"
-	"prescript/internal/utils"
 )
 
 //go:embed "script_schema.json"

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	cfg "github.com/rjnienaber/prescript/internal/config"
+	"github.com/rjnienaber/prescript/internal/utils"
 	"github.com/stretchr/testify/assert"
-	cfg "prescript/internal/config"
-	"prescript/internal/utils"
 )
 
 func TestBuildBasicScript(t *testing.T) {

@@ -1,8 +1,8 @@
 package config
 
 import (
+	"github.com/rjnienaber/prescript/internal/utils"
 	"github.com/spf13/cobra"
-	"prescript/internal/utils"
 )
 
 type subcommand int

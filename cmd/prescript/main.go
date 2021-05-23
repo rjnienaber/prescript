@@ -4,11 +4,11 @@ import (
 	"os"
 	"strings"
 
-	cfg "prescript/internal/config"
-	"prescript/internal/play"
-	"prescript/internal/record"
-	"prescript/internal/script"
-	"prescript/internal/utils"
+	cfg "github.com/rjnienaber/prescript/internal/config"
+	"github.com/rjnienaber/prescript/internal/play"
+	"github.com/rjnienaber/prescript/internal/record"
+	"github.com/rjnienaber/prescript/internal/script"
+	"github.com/rjnienaber/prescript/internal/utils"
 )
 
 func main() {

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"io"
 
-	"prescript/internal/utils"
+	"github.com/rjnienaber/prescript/internal/utils"
 )
 
 func createOutputChannel(stdout io.ReadCloser) chan utils.CapturedToken {

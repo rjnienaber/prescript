@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"prescript/internal/script"
-	"prescript/internal/utils"
+	"github.com/rjnienaber/prescript/internal/script"
+	"github.com/rjnienaber/prescript/internal/utils"
 )
 
 type StepMatcher struct {

@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"prescript/internal/utils"
+	"github.com/rjnienaber/prescript/internal/utils"
 )
 
 type OutputProcessor struct {

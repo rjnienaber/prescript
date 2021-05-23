@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	cfg "prescript/internal/config"
-	"prescript/internal/script"
-	"prescript/internal/utils"
+	cfg "github.com/rjnienaber/prescript/internal/config"
+	"github.com/rjnienaber/prescript/internal/script"
+	"github.com/rjnienaber/prescript/internal/utils"
 )
 
 func getExecutableFilePath(config cfg.PlayConfig, run script.Run) (string, error) {

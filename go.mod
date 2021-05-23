@@ -1,4 +1,4 @@
-module prescript
+module github.com/rjnienaber/prescript
 
 go 1.16
 

@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	cfg "prescript/internal/config"
-	script "prescript/internal/script"
-	"prescript/internal/utils"
+	cfg "github.com/rjnienaber/prescript/internal/config"
+	script "github.com/rjnienaber/prescript/internal/script"
+	"github.com/rjnienaber/prescript/internal/utils"
 )
 
 func captureIO(outputChannel chan utils.CapturedToken, inputChannel chan utils.CapturedToken) ([]utils.CapturedLine, int) {
