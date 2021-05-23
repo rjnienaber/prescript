@@ -11,7 +11,7 @@ type RecordConfig struct {
 
 func createRecordSubCommand(config *Config) *cobra.Command {
 	var recordCmd = &cobra.Command{
-		Use:   "record [script file] [executable] -- [args]",
+		Use:   "record [script file] [executable] [flags] -- [args]",
 		Short: "Runs a cli app and records output and responses",
 		Long:  "Runs a cli app and records output and responses",
 		Args:  cobra.MinimumNArgs(2),
@@ -23,6 +23,5 @@ func createRecordSubCommand(config *Config) *cobra.Command {
 		},
 	}
 
-	recordCmd.Flags().BoolVarP(&config.Record.IgnoreOutput, "ignoreOutput", "i", false, "ignore output from external command")
 	return recordCmd
 }

@@ -15,15 +15,6 @@ func TestParsesRecordCommand(t *testing.T) {
 	assert.Equal(t, []string{}, config.Record.Arguments)
 }
 
-func TestParsesRecordIgnoreOutput(t *testing.T) {
-	config, err := testParseArgs([]string{"record", "/tmp/script.json", "/bin/ls", "--ignoreOutput"})
-	assert.NoError(t, err)
-	assert.Equal(t, RecordCommand, config.Subcommand)
-	assert.Equal(t, "/tmp/script.json", config.Record.ScriptFile)
-	assert.Equal(t, "/bin/ls", config.Record.ExecutablePath)
-	assert.True(t, config.Record.IgnoreOutput)
-}
-
 func TestParsesRecordExecutableArguments(t *testing.T) {
 	config, err := testParseArgs([]string{"record", "/tmp/script.json", "/bin/ls", "--", "-r", "-l"})
 	assert.NoError(t, err)

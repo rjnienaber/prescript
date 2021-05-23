@@ -1,4 +1,7 @@
 # prescript
+[![Build](https://img.shields.io/github/workflow/status/rjnienaber/prescript/ci)]()
+[![Dependencies](https://img.shields.io/librariesio/github/rjnienaber/prescript)]()
+[![ReportCard](https://goreportcard.com/badge/github.com/rjnienaber/prescript)]()
 [![License](https://img.shields.io/github/license/rjnienaber/prescript)]()
 
 ### About
@@ -6,6 +9,12 @@
 a script file, it will watch the output of a cli application, responding with its own input. 
 
 ### Current Status: <span style="color: red; font-weight: bold">Early alpha</span>
+
+### Installation
+
+```
+go get github.com/rjnienaber/prescript/cmd/prescript
+```
 
 ### Example
 
@@ -85,8 +94,28 @@ prescript play [script file] [optional executable] [flags]
 | Option | Description                                                               | Type   | Default | Required? |
 | ------ | ------------------------------------------------------------------------- | ------ | ------- | --------- |
 | `[script file]`         | the script to use that contains the automated steps      | `bool` |         | Yes       |
-| `[optional executable]` | an executable to run the script against                  | `bool` |         | No        |
+| `[executable]`          | an executable to run the script against                  | `bool` |         | No        |
 | `-d`                    | dont fail on external command failures                   | `bool` | `false` | No        |
 | `-l`                    | log level to use with logs (e.g. none, debug, info)      | `enum` | `none`  | No        |
 | `-q`                    | no output                                                | `bool` | `false` | No        |
 | `-t`                    | timeout waiting for output from external command         | `bool` | `30s  ` | No        |
+
+#### `record`
+
+Runs an interactive cli, records responses and generates a script for use with `play`
+
+```bash
+prescript record [script file] [executable] [flags] -- [args]
+```
+
+| Option | Description                                                               | Type   | Default | Required? |
+| ------ | ------------------------------------------------------------------------- | ------ | ------- | --------- |
+| `[script file]`         | the script to use that contains the automated steps      | `bool` |         | Yes       |
+| `[executable]` | an executable to run the script against                  | `bool` |         | Yes        |
+
+**N.B.** The `--` convention is used to stop processing arguments for `prescript`. Any arguments after
+this point are passed to the executable.
+
+### Get in touch
+* Slack: Find me as @rjnienaber on https://gophers.slack.com/ 
+* Twitter: [@rjnienaber](https://twitter.com/rjnienaber)
