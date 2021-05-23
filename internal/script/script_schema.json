@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "version",
+    "runs"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["0.1"]
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "arguments",
+          "exitCode",
+          "steps"
+        ],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "executable": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exitCode": {
+            "type": "number"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "line"
+              ],
+              "properties": {
+                "line": {
+                  "type": "string"
+                },
+                "input": {
+                  "type": "string"
+                },
+                "isRegex": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 1
+    }
+  }
+}
