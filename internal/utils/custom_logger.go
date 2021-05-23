@@ -1,4 +1,4 @@
-package internal
+package utils
 
 import (
 	"fmt"
@@ -57,7 +57,7 @@ func (logger *CustomLogger) Debug(args ...interface{}) {
 
 func (logger *CustomLogger) Debugf(template string, args ...interface{}) {
 	if logger.zapLogger != nil {
-		logger.zapLogger.Debugf(template, args)
+		logger.zapLogger.Debugf(template, args...)
 	}
 }
 

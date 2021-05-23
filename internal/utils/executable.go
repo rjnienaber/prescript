@@ -1,21 +1,19 @@
-package internal
+package utils
 
 import (
 	"io"
 	"os/exec"
 	"strings"
-
-	cfg "prescript/internal/config"
 )
 
 type Executable struct {
 	Stdin   io.WriteCloser
 	Stdout  io.ReadCloser
 	command *exec.Cmd
-	logger  cfg.Logger
+	logger  Logger
 }
 
-func StartExecutable(appPath string, args []string, logger cfg.Logger) (Executable, error) {
+func StartExecutable(appPath string, args []string, logger Logger) (Executable, error) {
 	appArgs := strings.Join(args, ",")
 	executable := Executable{}
 

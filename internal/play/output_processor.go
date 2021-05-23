@@ -1,34 +1,29 @@
-package internal
+package play
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"time"
 
-	cfg "prescript/internal/config"
+	"prescript/internal/utils"
 )
 
 type OutputProcessor struct {
 	scanner *bufio.Scanner
-	logger  cfg.Logger
+	logger  utils.Logger
 }
 
-func NewOutputProcessor(stdout io.ReadCloser, logger cfg.Logger) OutputProcessor {
+func NewOutputProcessor(stdout io.ReadCloser, logger utils.Logger) OutputProcessor {
 	scanner := bufio.NewScanner(stdout)
-	scanner.Split(bufio.ScanBytes)
+	scanner.Split(bufio.ScanRunes)
 	return OutputProcessor{
 		scanner: scanner,
 		logger:  logger,
 	}
 }
 
-type TokenResult struct {
-	Finished bool
-	Token    string
-	Error    int
-}
-
-func (processor *OutputProcessor) NextChar(timeout time.Duration) TokenResult {
+func (processor *OutputProcessor) NextToken(timeout time.Duration) utils.CapturedToken {
 	scannerChannel := make(chan bool)
 	go func() { scannerChannel <- processor.scanner.Scan() }()
 
@@ -38,14 +33,14 @@ func (processor *OutputProcessor) NextChar(timeout time.Duration) TokenResult {
 		scannerResult = res
 	case <-time.After(timeout):
 		processor.logger.Info("timed out waiting for cli to return output")
-		return TokenResult{Error: CLI_ERROR}
+		return utils.CapturedToken{Error: errors.New("timed out waiting for cli to return output")}
 	}
 
 	processor.logger.Debugf("last scanner result: '%t'", scannerResult)
 
 	if !scannerResult {
-		return TokenResult{Finished: true}
+		return utils.CapturedToken{Finished: true}
 	}
 
-	return TokenResult{Token: processor.scanner.Text()}
+	return utils.CapturedToken{Token: processor.scanner.Text()}
 }

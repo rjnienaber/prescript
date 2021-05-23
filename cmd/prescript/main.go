@@ -4,14 +4,17 @@ import (
 	"os"
 	"strings"
 
-	"prescript/internal"
 	cfg "prescript/internal/config"
+	"prescript/internal/play"
+	"prescript/internal/record"
+	"prescript/internal/script"
+	"prescript/internal/utils"
 )
 
 func main() {
 	config, err := cfg.GetConfig()
 	if err != nil || config.Subcommand == cfg.NoCommand {
-		os.Exit(internal.USER_ERROR)
+		os.Exit(utils.USER_ERROR)
 	}
 
 	level := "none"
@@ -19,25 +22,30 @@ func main() {
 		level = strings.ToLower(config.Play.LogLevel)
 	}
 
-	logger, err := internal.NewLogger(level)
+	logger, err := utils.NewLogger(level)
 	if err != nil {
-		os.Exit(internal.INTERNAL_ERROR)
+		os.Exit(utils.INTERNAL_ERROR)
 	}
 	logger.Info("successfully parsed arguments and flags")
 	config.Logger = &logger
 
 	if config.Subcommand == cfg.PlayCommand {
-		script, err := internal.NewScriptFromFile(config.Play.ScriptFile)
+		scriptFile, err := script.NewScriptFromFile(config.Play.ScriptFile)
 		if err != nil {
-			logger.Info("script file couldn't be parsed:", err)
-			os.Exit(internal.USER_ERROR)
+			logger.Info("scriptFile file couldn't be parsed:", err)
+			os.Exit(utils.USER_ERROR)
 		}
 
-		result := internal.RunPlay(config, script.Runs[0])
+		result := play.Run(config.Play, scriptFile.Runs[0], config.Logger)
 		if config.Play.DontFail {
-			os.Exit(internal.SUCCESS)
+			os.Exit(utils.SUCCESS)
 		} else {
 			os.Exit(result)
 		}
+	}
+
+	if config.Subcommand == cfg.RecordCommand {
+		result := record.Run(config.Record, config.Logger)
+		os.Exit(result)
 	}
 }

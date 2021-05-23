@@ -1,4 +1,4 @@
-package internal
+package play
 
 import (
 	"os"
@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	cfg "prescript/internal/config"
+	"prescript/internal/script"
+	"prescript/internal/utils"
 )
 
 func getFixturePath(fileName string, t *testing.T) string {
@@ -17,7 +19,7 @@ func getFixturePath(fileName string, t *testing.T) string {
 		t.Errorf("failed to get current working directory: %s", err.Error())
 	}
 
-	fullPath, err := filepath.Abs(filepath.Join(cwd, "..", "test", fileName))
+	fullPath, err := filepath.Abs(filepath.Join(cwd, "..", "..", "test", fileName))
 	if err != nil {
 		t.Errorf("failed to get absolute path for fixture: %s", err.Error())
 	}
@@ -37,21 +39,21 @@ func createConfig(t *testing.T, fileName string) cfg.Config {
 			Timeout:        getTimeout(5000),
 			ExecutablePath: executablePath,
 		},
-		Logger: &CustomLogger{},
+		Logger: &utils.CustomLogger{},
 	}
 }
 
 func TestOutput(t *testing.T) {
 	t.Parallel()
 	config := createConfig(t, "fixtures/output.sh")
-	exitCode := RunPlay(config, Run{})
+	exitCode := Run(config.Play, script.Run{}, config.Logger)
 	assert.Equal(t, 0, exitCode)
 }
 
 func TestOutputWithDelay(t *testing.T) {
 	t.Parallel()
 	config := createConfig(t, "fixtures/output_with_delay.sh")
-	exitCode := RunPlay(config, Run{})
+	exitCode := Run(config.Play, script.Run{}, config.Logger)
 	assert.Equal(t, 0, exitCode)
 }
 
@@ -59,9 +61,9 @@ func TestInput(t *testing.T) {
 	t.Parallel()
 
 	config := createConfig(t, "fixtures/input.sh")
-	run := Run{Steps: []Step{{Line: "Please enter your name: ", Input: "Richard"}}}
+	run := script.Run{Steps: []script.Step{{Line: "Please enter your name: ", Input: "Richard"}}}
 
-	exitCode := RunPlay(config, run)
+	exitCode := Run(config.Play, run, config.Logger)
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -70,12 +72,12 @@ func TestDoubleInput(t *testing.T) {
 	t.Parallel()
 
 	config := createConfig(t, "fixtures/double_input.sh")
-	run := Run{Steps: []Step{
+	run := script.Run{Steps: []script.Step{
 		{Line: "First number: ", Input: "1"},
 		{Line: "Second number: ", Input: "2"},
 	}}
 
-	exitCode := RunPlay(config, run)
+	exitCode := Run(config.Play, run, config.Logger)
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -85,13 +87,13 @@ func TestDoubleInputRegex(t *testing.T) {
 
 	config := createConfig(t, "fixtures/double_input.sh")
 	regex := regexp.MustCompile(`Sum: \d`)
-	run := Run{Steps: []Step{
+	run := script.Run{Steps: []script.Step{
 		{Line: "First number: ", Input: "1"},
 		{Line: "Second number: ", Input: "2"},
 		{Line: "Sum: \\d", LineRegex: *regex, IsRegex: true},
 	}}
 
-	exitCode := RunPlay(config, run)
+	exitCode := Run(config.Play, run, config.Logger)
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -100,12 +102,12 @@ func TestPassingArguments(t *testing.T) {
 	t.Parallel()
 
 	config := createConfig(t, "fixtures/input_arguments.sh")
-	run := Run{
-		Steps:     []Step{{Line: "Hello, Rachel"}},
+	run := script.Run{
+		Steps:     []script.Step{{Line: "Hello, Rachel"}},
 		Arguments: []string{"Rachel"},
 	}
 
-	exitCode := RunPlay(config, run)
+	exitCode := Run(config.Play, run, config.Logger)
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -114,25 +116,25 @@ func TestSpecifyExecutableInScript(t *testing.T) {
 	t.Parallel()
 
 	config := createConfig(t, "fixtures/input_arguments.sh")
-	run := Run{
+	run := script.Run{
 		Executable: config.Play.ExecutablePath,
-		Steps:      []Step{{Line: "Hello, Rachel"}},
+		Steps:      []script.Step{{Line: "Hello, Rachel"}},
 		Arguments:  []string{"Rachel"},
 	}
 	config.Play.ExecutablePath = ""
 
-	exitCode := RunPlay(config, run)
+	exitCode := Run(config.Play, run, config.Logger)
 
 	assert.Equal(t, 0, exitCode)
 }
 
-func TestDuplicatedLinesInScriptt(t *testing.T) {
+func TestDuplicatedLinesInScript(t *testing.T) {
 	t.Parallel()
 
 	config := createConfig(t, "fixtures/duplicated_lines.sh")
-	run := Run{
+	run := script.Run{
 		Executable: config.Play.ExecutablePath,
-		Steps: []Step{
+		Steps: []script.Step{
 			{Line: "the same line repeated"},
 			{Line: "the same line repeated"},
 			{Line: "Please enter your name: ", Input: "Harold"},
@@ -142,7 +144,7 @@ func TestDuplicatedLinesInScriptt(t *testing.T) {
 			{Line: "success!"},
 		},
 	}
-	exitCode := RunPlay(config, run)
+	exitCode := Run(config.Play, run, config.Logger)
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -151,14 +153,14 @@ func TestCheckExitCode(t *testing.T) {
 	t.Parallel()
 
 	config := createConfig(t, "fixtures/exit_code.sh")
-	run := Run{
+	run := script.Run{
 		Executable: config.Play.ExecutablePath,
-		Steps: []Step{
+		Steps: []script.Step{
 			{Line: "Exit Code test"},
 		},
 		ExitCode: 1,
 	}
-	exitCode := RunPlay(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger)
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -168,11 +170,11 @@ func TestFailIfUnrecognisedStep(t *testing.T) {
 
 	config := createConfig(t, "fixtures/output.sh")
 	config.Play.Timeout = getTimeout(1000)
-	run := Run{Steps: []Step{
+	run := script.Run{Steps: []script.Step{
 		{Line: "Hello, Rachel"},
 	}}
 
-	exitCode := RunPlay(config, run)
+	exitCode := Run(config.Play, run, config.Logger)
 
 	assert.Equal(t, 1, exitCode)
 }
@@ -182,11 +184,27 @@ func TestFailIfUnexpectedStdin(t *testing.T) {
 
 	config := createConfig(t, "fixtures/input.sh")
 	config.Play.Timeout = getTimeout(1000)
-	run := Run{Steps: []Step{
+	run := script.Run{Steps: []script.Step{
 		{Line: "Hello, Rachel"},
 	}}
 
-	exitCode := RunPlay(config, run)
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 1, exitCode)
+}
+
+func TestFailIfExecutableTimesOutAfterSteps(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/timeout.sh")
+	logger, _ := utils.NewLogger("debug")
+	config.Play.Timeout = getTimeout(1000)
+	config.Logger = &logger
+	run := script.Run{Steps: []script.Step{
+		{Line: "Expecting this line"},
+	}}
+
+	exitCode := Run(config.Play, run, config.Logger)
 
 	assert.Equal(t, 1, exitCode)
 }

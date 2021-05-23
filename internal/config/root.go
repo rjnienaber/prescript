@@ -2,15 +2,8 @@ package config
 
 import (
 	"github.com/spf13/cobra"
+	"prescript/internal/utils"
 )
-
-type Logger interface {
-	Close()
-	Debug(args ...interface{})
-	Debugf(template string, args ...interface{})
-	Error(args ...interface{})
-	Info(args ...interface{})
-}
 
 type subcommand int
 
@@ -24,7 +17,7 @@ type Config struct {
 	Subcommand subcommand
 	Play       PlayConfig
 	Record     RecordConfig
-	Logger     Logger
+	Logger     utils.Logger
 }
 
 func GetConfig() (Config, error) {
@@ -38,7 +31,7 @@ func GetConfig() (Config, error) {
 		Short: "Record and playback responses to an interactive cli",
 		Long:  "Record and playback responses to an interactive cli",
 	}
-	rootCmd.Args = cobra.MinimumNArgs(1)
+
 	rootCmd.AddCommand(playCmd)
 	rootCmd.AddCommand(recordCmd)
 

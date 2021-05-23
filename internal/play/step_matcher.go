@@ -1,27 +1,28 @@
-package internal
+package play
 
 import (
 	"fmt"
 	"io"
 
-	cfg "prescript/internal/config"
+	"prescript/internal/script"
+	"prescript/internal/utils"
 )
 
 type StepMatcher struct {
 	currentLine      string
 	currentStepIndex int
-	logger           cfg.Logger
+	logger           utils.Logger
 	stdin            io.WriteCloser
-	steps            []Step
+	steps            []script.Step
 	quiet            bool
 }
 
-func NewStepMatcher(stdin io.WriteCloser, steps []Step, config cfg.Config) StepMatcher {
+func NewStepMatcher(stdin io.WriteCloser, steps []script.Step, quiet bool, logger utils.Logger) StepMatcher {
 	return StepMatcher{
-		logger: config.Logger,
+		logger: logger,
 		stdin:  stdin,
 		steps:  steps,
-		quiet:  config.Play.Quiet,
+		quiet:  quiet,
 	}
 }
 
@@ -49,7 +50,7 @@ func (matcher *StepMatcher) Match(char string) error {
 	return nil
 }
 
-func (matcher *StepMatcher) matchLine(step Step) (bool, error) {
+func (matcher *StepMatcher) matchLine(step script.Step) (bool, error) {
 	matched := false
 	if step.IsRegex {
 		matched = step.LineRegex.MatchString(matcher.currentLine)
