@@ -51,7 +51,7 @@ func (matcher *StepMatcher) Match(char string) error {
 }
 
 func (matcher *StepMatcher) matchLine(step script.Step) (bool, error) {
-	matched := false
+	var matched bool
 	if step.IsRegex {
 		matched = step.LineRegex.MatchString(matcher.currentLine)
 	} else {
