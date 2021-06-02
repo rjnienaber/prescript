@@ -3,7 +3,7 @@ package config
 import "github.com/spf13/cobra"
 
 type RecordConfig struct {
-	IgnoreOutput   bool
+	DontCompress   bool
 	ScriptFile     string
 	ExecutablePath string
 	Arguments      []string
@@ -22,6 +22,8 @@ func createRecordSubCommand(config *Config) *cobra.Command {
 			config.Record.Arguments = args[2:]
 		},
 	}
+
+	recordCmd.Flags().BoolVarP(&config.Record.DontCompress, "dont-compress", "d", false, "don't compress lines to match on")
 
 	return recordCmd
 }
