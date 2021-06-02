@@ -14,16 +14,18 @@ type Executable struct {
 }
 
 func StartExecutable(appPath string, args []string, logger Logger) (Executable, error) {
-	appArgs := strings.Join(args, ",")
 	executable := Executable{}
 
-	cmd := exec.Command(appPath, appArgs)
+	logger.Infof("app path: %s", appPath)
+	logger.Infof("app args: \"%s\"", strings.Join(args, "\", \""))
+
+	cmd := exec.Command(appPath, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		logger.Error("failed to capture stdout: ", err)
 		return executable, err
 	}
-	logger.Debug("captured stdout pipe")
+	logger.Info("captured stdout pipe")
 
 	cmd.Stderr = cmd.Stdout
 
@@ -32,7 +34,7 @@ func StartExecutable(appPath string, args []string, logger Logger) (Executable, 
 		logger.Error("failed to capture stdin: ", err)
 		return executable, err
 	}
-	logger.Debug("captured stdin pipe")
+	logger.Info("captured stdin pipe")
 
 	err = cmd.Start()
 	if err != nil {
@@ -40,7 +42,7 @@ func StartExecutable(appPath string, args []string, logger Logger) (Executable, 
 		return executable, err
 	}
 
-	logger.Debug("started application")
+	logger.Infof("started application: %s %s", appPath, strings.Join(args, " "))
 
 	executable.Stdin = stdin
 	executable.Stdout = stdout

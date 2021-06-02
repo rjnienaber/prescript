@@ -72,3 +72,9 @@ func (logger *CustomLogger) Info(args ...interface{}) {
 		logger.zapLogger.Info(args)
 	}
 }
+
+func (logger *CustomLogger) Infof(template string, args ...interface{}) {
+	if logger.zapLogger != nil {
+		logger.zapLogger.Infof(template, args...)
+	}
+}

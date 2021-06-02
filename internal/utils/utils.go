@@ -19,6 +19,7 @@ type Logger interface {
 	Debugf(template string, args ...interface{})
 	Error(args ...interface{})
 	Info(args ...interface{})
+	Infof(template string, args ...interface{})
 }
 
 type lineType int
