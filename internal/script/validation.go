@@ -14,7 +14,8 @@ func validateRegexes(runs []Run) []string {
 	var regexErrors []string
 	// validate regexes should they exist
 	for runIndex, run := range runs {
-		for stepIndex, step := range run.Steps {
+		for stepIndex := range run.Steps {
+			step := &run.Steps[stepIndex]
 			if step.IsRegex {
 				regex, err := regexp.Compile(step.Line)
 				if err != nil {

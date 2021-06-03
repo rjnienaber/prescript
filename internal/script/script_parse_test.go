@@ -42,11 +42,13 @@ func TestBasicScript(t *testing.T) {
 
 	assert.Equal(t, "enter your name: ", run.Steps[0].Line)
 	assert.Equal(t, "richard", run.Steps[0].Input)
-	assert.Equal(t, false, run.Steps[0].IsRegex)
+	assert.False(t, run.Steps[0].IsRegex)
 
-	assert.Equal(t, "hello \\w+", run.Steps[1].Line)
-	assert.Equal(t, "", run.Steps[1].Input)
-	assert.Equal(t, true, run.Steps[1].IsRegex)
+	stepOne := run.Steps[1]
+	assert.Equal(t, "hello \\w+", stepOne.Line)
+	assert.Equal(t, "", stepOne.Input)
+	assert.True(t, stepOne.IsRegex)
+	assert.True(t, stepOne.LineRegex.MatchString("hello richard"))
 }
 
 func TestValidationFailsForMissingProperties(t *testing.T) {
