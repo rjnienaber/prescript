@@ -2,9 +2,10 @@ package play
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/rjnienaber/prescript/internal/script"
 	"github.com/rjnienaber/prescript/internal/utils"
-	"io"
 )
 
 type StepMatcher struct {
