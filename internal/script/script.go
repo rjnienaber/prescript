@@ -50,12 +50,11 @@ func ParseScriptFromBytes(json []byte) (Script, error) {
 }
 
 func BuildScriptJson(cfg config.RecordConfig, lines []utils.CapturedLine, exitCode int, now time.Time, logger utils.Logger) (string, error) {
-	steps := []Step{}
-	for i, line := range lines {
-		if line.LineType == utils.Input {
-			output := lines[i-1].Value
-			steps = append(steps, Step{Line: output, Input: line.Value, IsRegex: false})
-		}
+	var steps []Step
+	if cfg.DontCompress {
+		steps = dontCompressCapturedLines(lines)
+	} else {
+		steps = compressCaputuredLines(lines)
 	}
 
 	script := Script{
@@ -78,4 +77,45 @@ func BuildScriptJson(cfg config.RecordConfig, lines []utils.CapturedLine, exitCo
 	}
 
 	return string(scriptBytes), nil
+}
+
+func compressCaputuredLines(lines []utils.CapturedLine) []Step {
+	steps := []Step{}
+	for i, line := range lines {
+		if line.LineType == utils.Input {
+			output := lines[i-1].Value
+			steps = append(steps, Step{Line: output, Input: line.Value})
+		}
+	}
+	return steps
+}
+
+func dontCompressCapturedLines(lines []utils.CapturedLine) []Step {
+	steps := []Step{}
+	for i, line := range lines {
+		if line.LineType == utils.Input {
+			// if first line and it's input, special case
+			if i == 0 {
+				steps = append(steps, Step{Input: line.Value})
+			}
+			continue
+		}
+
+		// process output line
+		if (i + 1) < len(lines) {
+			nextLine := lines[i+1]
+			if nextLine.LineType == utils.Input {
+				steps = append(steps, Step{Line: line.Value, Input: nextLine.Value})
+				continue
+			}
+		}
+
+		if line.Value == "" {
+			continue
+		}
+
+		steps = append(steps, Step{Line: line.Value})
+	}
+
+	return steps
 }
