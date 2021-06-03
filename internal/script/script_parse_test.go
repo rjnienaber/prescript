@@ -26,7 +26,7 @@ func TestBasicScript(t *testing.T) {
     }]
   }]
 }`
-	script, err := NewScriptFromBytes([]byte(basicScript))
+	script, err := ParseScriptFromBytes([]byte(basicScript))
 	assert.NoError(t, err)
 	assert.Equal(t, "0.1", script.Version)
 	assert.Len(t, script.Runs, 1)
@@ -55,7 +55,7 @@ func TestValidationFailsForMissingProperties(t *testing.T) {
 	basicScript := `{
   "version": "0.1",
 }`
-	_, err := NewScriptFromBytes([]byte(basicScript))
+	_, err := ParseScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 }
 
@@ -78,7 +78,7 @@ func TestValidationFailsForIncorrectType(t *testing.T) {
     }]
   }]
 }`
-	_, err := NewScriptFromBytes([]byte(basicScript))
+	_, err := ParseScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 	expected := `Script validation errors:
 runs.0.exitCode: Invalid type. Expected: number, given: string
@@ -94,7 +94,7 @@ func TestValidationFailsForIncorrectVersion(t *testing.T) {
   "runs": []
   }]
 }`
-	_, err := NewScriptFromBytes([]byte(basicScript))
+	_, err := ParseScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 	expected := `Script validation errors:
 runs: Array must have at least 1 items
@@ -116,7 +116,7 @@ func TestHandlesInvalidRegex(t *testing.T) {
     }]
   }]
 }`
-	_, err := NewScriptFromBytes([]byte(basicScript))
+	_, err := ParseScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 	expected := `Script validation errors:
 runs.0.steps.0.line: error parsing regexp: missing closing ): ` + "`hello (w+`"

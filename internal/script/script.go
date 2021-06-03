@@ -14,15 +14,15 @@ import (
 //go:embed "script_schema.json"
 var SchemaBytes []byte
 
-func NewScriptFromFile(filePath string) (Script, error) {
+func ParseScriptFromFile(filePath string) (Script, error) {
 	json, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return Script{}, err
 	}
-	return NewScriptFromBytes(json)
+	return ParseScriptFromBytes(json)
 }
 
-func NewScriptFromBytes(json []byte) (Script, error) {
+func ParseScriptFromBytes(json []byte) (Script, error) {
 	schemaLoader := schema.NewBytesLoader(SchemaBytes)
 	documentLoader := schema.NewBytesLoader(json)
 	result, err := schema.Validate(schemaLoader, documentLoader)

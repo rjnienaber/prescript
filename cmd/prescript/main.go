@@ -30,7 +30,7 @@ func main() {
 	config.Logger = &logger
 
 	if config.Subcommand == cfg.PlayCommand {
-		scriptFile, err := script.NewScriptFromFile(config.Play.ScriptFile)
+		scriptFile, err := script.ParseScriptFromFile(config.Play.ScriptFile)
 		if err != nil {
 			logger.Info("scriptFile file couldn't be parsed:", err)
 			os.Exit(utils.USER_ERROR)
