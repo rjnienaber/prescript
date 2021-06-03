@@ -40,7 +40,12 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 		tokenResult := processor.NextToken(config.Timeout)
 		if tokenResult.Error != nil {
 			if strings.Contains(tokenResult.Error.Error(), "timed out waiting") {
-				processor.logger.Error("timed out waiting for next line:", matcher.NextExpectedLine())
+				nextLine := matcher.NextExpectedLine()
+				if nextLine == "" {
+					processor.logger.Error("timed out waiting for executable to finish")
+				} else {
+					processor.logger.Error("timed out waiting for next line:", nextLine)
+				}
 			} else {
 				processor.logger.Error("errored waiting for next token", tokenResult.Error)
 			}

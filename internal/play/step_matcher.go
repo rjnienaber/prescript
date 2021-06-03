@@ -35,7 +35,11 @@ func (matcher *StepMatcher) ResetLine() {
 }
 
 func (matcher *StepMatcher) NextExpectedLine() string {
-	return matcher.steps[matcher.currentStepIndex].Line
+	if len(matcher.steps) == matcher.currentStepIndex {
+		return ""
+	} else {
+		return matcher.steps[matcher.currentStepIndex].Line
+	}
 }
 
 func (matcher *StepMatcher) Match(char string) error {
