@@ -32,8 +32,8 @@ func (processor *OutputProcessor) NextToken(timeout time.Duration) utils.Capture
 	case res := <-scannerChannel:
 		scannerResult = res
 	case <-time.After(timeout):
-		processor.logger.Info("timed out waiting for cli to return output")
-		return utils.CapturedToken{Error: errors.New("timed out waiting for cli to return output")}
+		// TODO: kill command if there is a timeout
+		return utils.CapturedToken{Error: errors.New("timed out waiting for cli to return expected output")}
 	}
 
 	processor.logger.Debugf("last scanner result: '%t'", scannerResult)

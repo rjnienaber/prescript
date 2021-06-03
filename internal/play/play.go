@@ -3,6 +3,7 @@ package play
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	cfg "github.com/rjnienaber/prescript/internal/config"
 	"github.com/rjnienaber/prescript/internal/script"
@@ -38,6 +39,12 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 	for {
 		tokenResult := processor.NextToken(config.Timeout)
 		if tokenResult.Error != nil {
+			if strings.Contains(tokenResult.Error.Error(), "timed out waiting") {
+				processor.logger.Error("timed out waiting for next line:", matcher.NextExpectedLine())
+			} else {
+				processor.logger.Error("errored waiting for next token", tokenResult.Error)
+			}
+
 			return utils.CLI_ERROR
 		}
 

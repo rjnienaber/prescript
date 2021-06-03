@@ -2,10 +2,9 @@ package play
 
 import (
 	"fmt"
-	"io"
-
 	"github.com/rjnienaber/prescript/internal/script"
 	"github.com/rjnienaber/prescript/internal/utils"
+	"io"
 )
 
 type StepMatcher struct {
@@ -32,6 +31,10 @@ func (matcher *StepMatcher) MissingSteps() bool {
 
 func (matcher *StepMatcher) ResetLine() {
 	matcher.currentLine = ""
+}
+
+func (matcher *StepMatcher) NextExpectedLine() string {
+	return matcher.steps[matcher.currentStepIndex].Line
 }
 
 func (matcher *StepMatcher) Match(char string) error {
