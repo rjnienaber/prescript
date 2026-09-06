@@ -42,11 +42,19 @@ func TestConfigScriptFile(t *testing.T) {
 	assert.Equal(t, "/tmp/script.json", config.Play.ScriptFile)
 }
 
-func TestConfigAcceptsOptionalExecutable(t *testing.T) {
-	config, err := testParseArgs([]string{"play", "/tmp/script.json", "/bin/ls"})
+func TestConfigAcceptsExecutableOverride(t *testing.T) {
+	config, err := testParseArgs([]string{"play", "/tmp/script.json", "--exec=/bin/ls"})
 	assert.NoError(t, err)
 	assert.Equal(t, PlayCommand, config.Subcommand)
 	assert.Equal(t, "/bin/ls", config.Play.ExecutablePath)
+}
+
+func TestConfigCanOverrideArguments(t *testing.T) {
+	config, err := testParseArgs([]string{"play", "/tmp/script.json", "--exec=/bin/ls", "--", "-l"})
+	assert.NoError(t, err)
+	assert.Equal(t, PlayCommand, config.Subcommand)
+	assert.Equal(t, "/bin/ls", config.Play.ExecutablePath)
+	assert.Equal(t, []string{"-l"}, config.Play.Arguments)
 }
 
 func TestConfigRequiresScriptfile(t *testing.T) {

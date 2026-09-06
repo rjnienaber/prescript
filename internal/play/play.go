@@ -22,13 +22,24 @@ func getExecutableFilePath(config cfg.PlayConfig, run script.Run) (string, error
 	return "", errors.New("could not find executable path in argument or script file")
 }
 
+// Arguments supplied on the command line, after a `--` separator, take
+// precedence over those recorded in the script file. This lets one script be
+// replayed against a different implementation without editing it.
+func getArguments(config cfg.PlayConfig, run script.Run) []string {
+	if len(config.Arguments) > 0 {
+		return config.Arguments
+	}
+
+	return run.Arguments
+}
+
 func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 	executablePath, err := getExecutableFilePath(config, run)
 	if err != nil {
 		return utils.USER_ERROR
 	}
 
-	executable, err := utils.StartExecutable(executablePath, run.Arguments, logger)
+	executable, err := utils.StartExecutable(executablePath, getArguments(config, run), logger)
 	if err != nil {
 		return utils.INTERNAL_ERROR
 	}

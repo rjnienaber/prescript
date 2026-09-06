@@ -13,6 +13,7 @@ type Step struct {
 }
 
 type Run struct {
+	Name       string    `json:"name,omitempty"`
 	Timestamp  time.Time `json:"timestamp"`
 	Executable string    `json:"executable"`
 	Arguments  []string  `json:"arguments"`
