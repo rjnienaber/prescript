@@ -9,6 +9,10 @@ permissions:
   contents: read
 
 jobs:
+  # Verifies the module itself builds and passes tests on every supported Go
+  # version. Deliberately installs no tooling: gci and golangci-lint both
+  # require a newer Go than the floor here, and setup-go pins
+  # GOTOOLCHAIN=local, so needing them would silently constrain the matrix.
   build:
     runs-on: ubuntu-latest
     strategy:
@@ -20,20 +24,10 @@ jobs:
       - name: checkout code
         uses: actions/checkout@v7
 
-      # setup-go caches the module cache and build cache itself, so the
-      # separate actions/cache step this workflow used to carry is gone.
       - name: setup go
         uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go-version }}
-
-      # `make tools`, not `make dependencies`: the latter also downloads the
-      # vintbas reference interpreter, whose release asset is gone. See #20.
-      - name: install tooling
-        run: make tools
-
-      - name: go format
-        run: make format
 
       - name: make test
         run: make test
@@ -44,7 +38,9 @@ jobs:
       # `make examples` is intentionally absent: it needs the vintbas binary,
       # which is currently unavailable. Restore this step when #20 is fixed.
 
-  lint:
+  # Formatting and linting are properties of the repository, not of any one
+  # Go version, so they run once on the newest.
+  checks:
     runs-on: ubuntu-latest
     steps:
       - name: checkout code
@@ -54,6 +50,12 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version: '1.24'
+
+      - name: install tooling
+        run: make tools
+
+      - name: go format
+        run: make format
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
