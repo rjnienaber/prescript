@@ -1,35 +1,65 @@
 name: ci
-on: [push]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
 jobs:
+  # Verifies the module itself builds and passes tests on every supported Go
+  # version. Deliberately installs no tooling: gci and golangci-lint both
+  # require a newer Go than the floor here, and setup-go pins
+  # GOTOOLCHAIN=local, so needing them would silently constrain the matrix.
   build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Lower bound must match the `go` directive in go.mod.
+        go-version: ['1.22', '1.23', '1.24']
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v7
+
+      - name: setup go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: make test
+        run: make test
+
+      - name: make build_dev
+        run: make build_dev
+
+      # `make examples` is intentionally absent: it needs the vintbas binary,
+      # which is currently unavailable. Restore this step when #20 is fixed.
+
+  # Formatting and linting are properties of the repository, not of any one
+  # Go version, so they run once on the newest.
+  checks:
     runs-on: ubuntu-latest
     steps:
       - name: checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
+
       - name: setup go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v7
         with:
-          go-version: '^1.16'
-      - name: go version
-        run: go version
-      - name: cache dependencies
-        uses: actions/cache@v2
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: make dependencies
-        run: make dependencies
+          go-version: '1.24'
+
+      - name: install tooling
+        run: make tools
+
       - name: go format
         run: make format
+
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
-      - name: make test
-        run: make test
-      - name: make build_dev
-        run: make build_dev
-      - name: make examples
-        run: make examples
+          # golangci-lint v2 pinned so a new release cannot turn CI red on
+          # its own. Verified clean against this codebase.
+          version: v2.1.6

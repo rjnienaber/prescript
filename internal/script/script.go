@@ -3,7 +3,7 @@ package script
 import (
 	_ "embed"
 	json2 "encoding/json"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/rjnienaber/prescript/internal/config"
@@ -15,7 +15,7 @@ import (
 var SchemaBytes []byte
 
 func ParseScriptFromFile(filePath string) (Script, error) {
-	json, err := ioutil.ReadFile(filePath)
+	json, err := os.ReadFile(filePath)
 	if err != nil {
 		return Script{}, err
 	}

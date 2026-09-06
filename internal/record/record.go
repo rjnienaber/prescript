@@ -2,7 +2,6 @@ package record
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -85,7 +84,7 @@ func runRecord(config cfg.RecordConfig, logger utils.Logger) (string, int) {
 func Run(config cfg.RecordConfig, logger utils.Logger) int {
 	scriptJson, exitCode := runRecord(config, logger)
 	if exitCode == utils.SUCCESS {
-		err := ioutil.WriteFile(config.ScriptFile, []byte(scriptJson), 0755)
+		err := os.WriteFile(config.ScriptFile, []byte(scriptJson), 0755)
 		if err != nil {
 			logger.Error("failed writing script json to file: ", err)
 			return utils.INTERNAL_ERROR
