@@ -1,14 +1,29 @@
+GCI_VERSION := v0.14.0
+VINTBAS_URL := https://github.com/rjnienaber/vintage-basic/releases/download/047411c/vintbas_prng_disabled
+
 .PHONY: dependencies
-dependencies:
+dependencies: tools vintbas
+
+# Build/lint tooling only. Kept separate from `vintbas` so CI can install
+# what it needs without depending on an external download.
+.PHONY: tools
+tools:
+	go install github.com/daixiang0/gci@$(GCI_VERSION)
+
+# The reference BASIC interpreter, a build of Vintage BASIC with the PRNG
+# disabled. This download is currently broken: rjnienaber/vintage-basic no
+# longer exists and the asset is gone. See the tracking issue before
+# re-enabling `examples` in CI.
+.PHONY: vintbas
+vintbas:
 	mkdir -p ${HOME}/.local/bin
-	wget -q https://github.com/rjnienaber/vintage-basic/releases/download/047411c/vintbas_prng_disabled -O ${HOME}/.local/bin/vintbas
+	curl -fsSL $(VINTBAS_URL) -o ${HOME}/.local/bin/vintbas
 	chmod +x ${HOME}/.local/bin/vintbas
-	go get github.com/daixiang0/gci
 
 .PHONY: format
 format:
 	go fmt ./...
-	gci -w .
+	gci write .
 
 	@if [ `git ls-files --other --modified --exclude-standard | grep '.go$$' | wc -l` != "0" ]; then\
 		echo ;\

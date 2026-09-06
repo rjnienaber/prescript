@@ -1,35 +1,63 @@
 name: ci
-on: [push]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Lower bound must match the `go` directive in go.mod.
+        go-version: ['1.22', '1.23', '1.24']
     steps:
       - name: checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      # setup-go caches the module cache and build cache itself, so the
+      # separate actions/cache step this workflow used to carry is gone.
       - name: setup go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: '^1.16'
-      - name: go version
-        run: go version
-      - name: cache dependencies
-        uses: actions/cache@v2
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: make dependencies
-        run: make dependencies
+          go-version: ${{ matrix.go-version }}
+
+      # `make tools`, not `make dependencies`: the latter also downloads the
+      # vintbas reference interpreter, whose release asset is gone. See #20.
+      - name: install tooling
+        run: make tools
+
       - name: go format
         run: make format
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: latest
+
       - name: make test
         run: make test
+
       - name: make build_dev
         run: make build_dev
-      - name: make examples
-        run: make examples
+
+      # `make examples` is intentionally absent: it needs the vintbas binary,
+      # which is currently unavailable. Restore this step when #20 is fixed.
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          # golangci-lint v2 pinned so a new release cannot turn CI red on
+          # its own. Verified clean against this codebase.
+          version: v2.1.6
