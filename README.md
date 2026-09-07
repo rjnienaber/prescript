@@ -101,6 +101,7 @@ prescript play [script file] [flags] -- [executable arguments]
 | `-q`                    | no output                                                | `bool` | `false` | No        |
 | `-t`                    | timeout waiting for output from external command         | `bool` | `30s  ` | No        |
 | `--terminal`            | what the executable is given for its standard streams (`pty` or `pipes`) | `enum` | `pty` | No        |
+| `--tape`                | file of recorded random values to replay to the executable | `string` |   | No        |
 | `-- [args]`             | arguments for the executable, overriding those in the script | `list` |     | No        |
 
 #### `record`
