@@ -268,7 +268,8 @@ pty takes anything the program started with it.
 make dependencies   # build tooling, plus the vintbas interpreter the examples run against
 make prepush        # format, lint, test, build, examples
 
-make image          # the pinned environment
+make pull_image     # the pinned environment, as published
+make image          # or build it locally
 make docker_test    # the suite, inside it
 ```
 
@@ -288,8 +289,9 @@ Randomness is not the only thing that moves. Interpreter versions, locale,
 timezone, terminal size, hash seeds and address layout change what a program
 prints without changing what it does, and a difference between two ports means
 nothing if the two ran in different worlds. `docker/` holds a pinned
-environment that fixes all of them, used by CI and available locally; see
-[docs/container.md](docs/container.md).
+environment that fixes all of them, published to
+`ghcr.io/rjnienaber/prescript-env` so CI and a developer run the same bytes
+rather than the same recipe; see [docs/container.md](docs/container.md).
 
 ### Get in touch
 * Slack: Find me as @rjnienaber on https://gophers.slack.com/ 

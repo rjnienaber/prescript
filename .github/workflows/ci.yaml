@@ -54,6 +54,10 @@ jobs:
   # only way to know it still builds is to build it on every change.
   container:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Only to publish the environment below, and only on main.
+      packages: write
     steps:
       - name: checkout code
         uses: actions/checkout@v7
@@ -63,6 +67,15 @@ jobs:
 
       - name: make docker_test
         run: make docker_test
+
+      # Published only after the suite has passed in it, and only from main:
+      # an image nobody has run is not one to hand to anybody, and a pull
+      # request's image is a proposal rather than the environment.
+      - name: publish the image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: make push_image
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Formatting and linting are properties of the repository, not of any one
   # Go version, so they run once on the newest.

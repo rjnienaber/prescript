@@ -8,7 +8,8 @@ locale, timezone, terminal size, hash seeds and address layout all change what
 a program prints without changing what it does.
 
 ```
-make image        # build it
+make pull_image   # get the published one
+make image        # or build it yourself
 make docker_test  # run the suite inside it
 make docker_shell # look around
 ```
@@ -80,12 +81,31 @@ timezone=UTC
 
 Issue #18 folds both into the repro block of a generated bug report.
 
-## What it does not do
+## Where it lives
 
-The image is not published anywhere yet, so CI and a developer each build it
-from the same pinned Dockerfile rather than pulling the same bytes. That is
-enough to make the toolchains agree and not enough to make the image layers
-byte-identical; publishing it is the obvious follow-up.
+`ghcr.io/rjnienaber/prescript-env`, pushed by CI from `main` after the suite
+has passed inside it. Building from the same pinned Dockerfile makes two
+images agree on every version without making them the same image — apt
+indexes move, timestamps differ, and the layers come out different. Pulling
+removes that last gap, and gives the run a digest to be named by.
+
+```
+make pull_image                                                  # :latest
+make pull_image PUBLISHED_REF=ghcr.io/rjnienaber/prescript-env@sha256:...
+```
+
+Both give the image the local name the rest of the tooling uses, so
+`make docker_test` and `docker/run.sh` do not need to know which one was used.
+A tag says which build; a digest says which bytes, and a digest is what to use
+when reproducing someone else's run — the publishing step prints the one it
+pushed, and `$PRESCRIPT_IMAGE` reports the one a run is actually inside.
+
+The package is public. Public packages on GitHub Packages carry no storage or
+bandwidth charge; a private one would bill against the account's quota, and
+this image is around a gigabyte. If a first publish ever creates it private,
+the fix is one setting on the package, not a change here.
+
+## What it does not do
 
 Address-space randomisation is left on by default. Docker's default seccomp
 profile permits `personality()` with a handful of arguments and
