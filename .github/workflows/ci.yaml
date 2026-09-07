@@ -35,8 +35,13 @@ jobs:
       - name: make build_dev
         run: make build_dev
 
-      # `make examples` is intentionally absent: it needs the vintbas binary,
-      # which is currently unavailable. Restore this step when #20 is fixed.
+      - name: install vintbas
+        run: |
+          make vintbas
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: make examples
+        run: make examples
 
   # Formatting and linting are properties of the repository, not of any one
   # Go version, so they run once on the newest.
