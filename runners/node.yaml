@@ -1,0 +1,21 @@
+# How to start a Node port, and how to make its randomness repeatable.
+#
+#   prescript play dice.yaml --runner runners/node.yaml
+version: "0.8"
+executable: node
+
+env:
+  # Node runs this before the program, so a port does not have to be edited to
+  # be made deterministic. ${runnerDir} is where this file lives, so the runner
+  # and its shim travel together whatever directory prescript is run from.
+  NODE_OPTIONS: "--require ${runnerDir}/node/seed.js"
+
+  # One variable seeds every language. Two ports of the same program still draw
+  # different numbers from it -- that is what a tape fixes, not a seed -- but
+  # each of them draws the same numbers every time.
+  PRESCRIPT_SEED: "0"
+
+# A node installed by nvm, volta or asdf is found through the environment, and
+# a port with dependencies resolves them through it too. Pinning the
+# environment is a container's job rather than a runner's.
+inheritEnv: true

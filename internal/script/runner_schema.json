@@ -16,18 +16,18 @@
       "type": "string"
     },
     "executable": {
-      "description": "The program that launches an implementation, for example ruby or python3.",
+      "description": "The program that launches an implementation, for example ruby or python3. May use ${runnerDir}, which stands for the directory this runner file was read from. Added in 0.8.",
       "type": "string"
     },
     "arguments": {
-      "description": "Arguments the runner always passes, before the ones naming the program to run.",
+      "description": "Arguments the runner always passes, before the ones naming the program to run. May use ${runnerDir}. Added in 0.8.",
       "type": "array",
       "items": {
         "type": "string"
       }
     },
     "env": {
-      "description": "Environment the runner needs. Merged with the script's own env, which wins where the two name the same variable.",
+      "description": "Environment the runner needs. Merged with the script's own env, which wins where the two name the same variable. Values may use ${runnerDir}, which is how a runner names a shim file that sits beside it. Added in 0.8.",
       "type": "object",
       "additionalProperties": {
         "type": "string"

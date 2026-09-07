@@ -1,0 +1,23 @@
+# How to start a Ruby port, and how to make its randomness repeatable. One
+# runner per language, shared by every script in a corpus.
+#
+#   prescript play dice.yaml --runner runners/ruby.yaml
+version: "0.8"
+executable: ruby
+
+env:
+  # Ruby loads this before the program, so a port does not have to be edited to
+  # be made deterministic. ${runnerDir} is where this file lives, so the runner
+  # and its shim travel together whatever directory prescript is run from.
+  RUBYOPT: "-r${runnerDir}/ruby/seed.rb"
+
+  # One variable seeds every language. Two ports of the same program still draw
+  # different numbers from it -- that is what a tape fixes, not a seed -- but
+  # each of them draws the same numbers every time.
+  PRESCRIPT_SEED: "0"
+
+# An interpreter installed by rbenv, rvm or asdf finds its own standard library
+# through the environment, so replacing that environment wholesale makes the
+# runner work only where Ruby came from the system. Pinning the environment is
+# a container's job rather than a runner's.
+inheritEnv: true

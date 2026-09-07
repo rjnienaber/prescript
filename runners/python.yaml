@@ -1,0 +1,28 @@
+# How to start a Python port, and how to make its randomness repeatable.
+#
+#   prescript play dice.yaml --runner runners/python.yaml
+version: "0.8"
+executable: python3
+
+env:
+  # CPython imports sitecustomize from anywhere on PYTHONPATH during startup,
+  # before the program runs, which is how a port is seeded without being
+  # edited. ${runnerDir} is where this file lives, so the runner and its shim
+  # travel together whatever directory prescript is run from.
+  PYTHONPATH: "${runnerDir}/python"
+
+  # One variable seeds every language. Two ports of the same program still draw
+  # different numbers from it -- that is what a tape fixes, not a seed -- but
+  # each of them draws the same numbers every time.
+  PRESCRIPT_SEED: "0"
+
+  # Set of dicts and sets are ordered by string hashes that are randomised per
+  # process by default, so a program that prints one is a different program on
+  # every run whatever its RNG does.
+  PYTHONHASHSEED: "0"
+
+# A python3 installed by pyenv, conda or asdf finds its own standard library
+# through the environment, so replacing that environment wholesale makes the
+# runner work only where Python came from the system. Pinning the environment
+# is a container's job rather than a runner's.
+inheritEnv: true
