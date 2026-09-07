@@ -96,7 +96,7 @@ prescript play [script file] [flags] -- [executable arguments]
 | `[script file]`         | the script to use that contains the automated steps      | `bool` |         | Yes       |
 | `-e`                    | override the executable named in the script file         | `string` |       | No        |
 | `-d`                    | dont fail on external command failures                   | `bool` | `false` | No        |
-| `-l`                    | log level to use with logs (e.g. none, debug, info)      | `enum` | `none`  | No        |
+| `-l`                    | log level to use with logs (`none`, `error`, `info` or `debug`) | `enum` | `none`  | No        |
 | `-q`                    | no output                                                | `bool` | `false` | No        |
 | `-t`                    | timeout waiting for output from external command         | `bool` | `30s  ` | No        |
 | `-- [args]`             | arguments for the executable, overriding those in the script | `list` |     | No        |
@@ -116,6 +116,32 @@ prescript record [script file] [executable] [flags] -- [args]
 
 **N.B.** The `--` convention is used to stop processing arguments for `prescript`. Any arguments after
 this point are passed to the executable.
+
+### When a run fails
+
+`prescript` exits non-zero and writes a report to stderr saying which step went
+wrong and what arrived instead:
+
+```
+step 1 of 2 did not match (timed out after 5s)
+
+  expected  "HOW MANY ROLES? "
+  received  "HOW MANY ROLLS? "
+                         ^ first difference
+
+  output since the last matched step:
+    THIS PROGRAM SIMULATES THE ROLLING OF A
+    PAIR OF DICE.
+
+1 later step was never reached
+```
+
+Lines are quoted because trailing whitespace is load-bearing: prompts usually
+end in a space, and an unquoted report makes a step that differs only in that
+respect look identical to the one it failed to match.
+
+The report goes to stderr, so `--quiet` still silences the program's own output
+without hiding the diagnosis, and it does not depend on `--log-level`.
 
 ### Development
 

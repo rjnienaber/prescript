@@ -31,7 +31,7 @@ func createPlaySubCommand(config *Config) *cobra.Command {
 
 	playCmd.Flags().BoolVarP(&config.Play.Quiet, "quiet", "q", false, "quiet mode, no output")
 	playCmd.Flags().BoolVarP(&config.Play.DontFail, "dont-fail", "d", false, "dont fail on external command failures")
-	playCmd.Flags().StringVarP(&config.Play.LogLevel, "log-level", "l", "none", "log level to use with logs (e.g. none, debug, info)")
+	playCmd.Flags().StringVarP(&config.Play.LogLevel, "log-level", "l", "none", "log level to use with logs (none, error, info or debug)")
 	playCmd.Flags().StringVarP(&config.Play.ExecutablePath, "exec", "e", "", "override the executable named in the script file")
 
 	defaultTimeout := 30 * time.Second
