@@ -46,12 +46,20 @@ func repositoryPath(t *testing.T, parts ...string) string {
 // without Node should report that these tests did not run, not that they
 // failed: the runner is a claim about Node, and there is no Node to check it
 // against.
+//
+// Somewhere has to actually run them, though, or a shipped runner is only ever
+// claimed to work. Setting PRESCRIPT_REQUIRE_RUNNERS turns a missing language
+// into a failure, and CI sets it: an image that stops installing Ruby should
+// turn the build red rather than quietly shrink what is being checked.
 func loadRunner(t *testing.T, name string) script.Runner {
 	t.Helper()
 	runner, err := script.ParseRunnerFromFile(repositoryPath(t, "runners", name))
 	assert.NoError(t, err)
 
 	if _, err := exec.LookPath(runner.Executable); err != nil {
+		if os.Getenv("PRESCRIPT_REQUIRE_RUNNERS") != "" {
+			t.Fatalf("%s is not installed, so %s cannot be checked, and PRESCRIPT_REQUIRE_RUNNERS says it has to be", runner.Executable, name)
+		}
 		t.Skipf("%s is not installed, so %s cannot be checked here", runner.Executable, name)
 	}
 
