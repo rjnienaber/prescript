@@ -6,4 +6,6 @@ import sys
 
 print("HOW MANY? ", end="", flush=True)
 count = int(sys.stdin.readline().strip())
-print(" ".join(str(random.randint(0, 999)) for _ in range(count)))
+# INT(RND(1) * 1000), the way a port translates it. Written the same way in
+# every language here, so a tape gives all of them the same numbers.
+print(" ".join(str(int(random.random() * 1000)) for _ in range(count)))

@@ -101,6 +101,7 @@ prescript play [script file] [flags] -- [executable arguments]
 | `-q`                    | no output                                                | `bool` | `false` | No        |
 | `-t`                    | timeout waiting for output from external command         | `bool` | `30s  ` | No        |
 | `--terminal`            | what the executable is given for its standard streams (`pty` or `pipes`) | `enum` | `pty` | No        |
+| `--tape`                | file of recorded random values to replay to the executable | `string` |   | No        |
 | `-- [args]`             | arguments for the executable, overriding those in the script | `list` |     | No        |
 
 #### `record`
@@ -199,9 +200,23 @@ testable:
 prescript play scripts/33-dice.yaml --runner runners/ruby.yaml -- 33_Dice/ruby/dice.rb
 ```
 
-Ruby, Python, Node and Go ship and are covered by tests. What each one reaches,
-what it does not, and why the same seed still gives four different sequences,
-is in [docs/determinism.md](docs/determinism.md).
+Ruby, Python, Node and Go ship and are covered by tests.
+
+A seed makes one port repeatable, but the same seed gives each language a
+different sequence, so one script still cannot serve them all. `--tape` closes
+that gap: it replays random values recorded from the reference BASIC
+interpreter, so every port draws the same numbers and one expected transcript
+fits all of them.
+
+```
+prescript play scripts/33-dice.yaml --runner runners/ruby.yaml \
+  --tape tapes/vintbas-seed0.tape -- 33_Dice/ruby/dice.rb
+```
+
+A port that runs off the end of the tape fails rather than wrapping, because
+drawing more randomness than the reference did is itself the finding. What each
+runner reaches, what it does not, and where the recorded numbers come from, is
+in [docs/determinism.md](docs/determinism.md).
 
 ### Timeouts
 

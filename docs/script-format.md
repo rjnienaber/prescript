@@ -476,7 +476,7 @@ runner file itself was read from:
 version: "0.8"
 executable: ruby
 env:
-  RUBYOPT: "-r${runnerDir}/ruby/seed.rb"
+  RUBYOPT: "-r${runnerDir}/ruby/random.rb"
 ```
 
 It resolves to an absolute path, so a runner and the files it points at travel

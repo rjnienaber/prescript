@@ -8,7 +8,7 @@ env:
   # Node runs this before the program, so a port does not have to be edited to
   # be made deterministic. ${runnerDir} is where this file lives, so the runner
   # and its shim travel together whatever directory prescript is run from.
-  NODE_OPTIONS: "--require ${runnerDir}/node/seed.js"
+  NODE_OPTIONS: "--require ${runnerDir}/node/random.js"
 
   # One variable seeds every language. Two ports of the same program still draw
   # different numbers from it -- that is what a tape fixes, not a seed -- but

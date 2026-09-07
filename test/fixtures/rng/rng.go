@@ -33,7 +33,8 @@ func main() {
 
 	drawn := make([]string, count)
 	for i := range drawn {
-		drawn[i] = strconv.Itoa(rand.Intn(1000))
+		// INT(RND(1) * 1000), the way a port translates it.
+		drawn[i] = strconv.Itoa(int(rand.Float64() * 1000))
 	}
 	fmt.Println(strings.Join(drawn, " "))
 }
