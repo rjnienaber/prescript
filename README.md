@@ -95,6 +95,7 @@ prescript play [script file] [flags] -- [executable arguments]
 | ------ | ------------------------------------------------------------------------- | ------ | ------- | --------- |
 | `[script file]`         | the script to use that contains the automated steps      | `bool` |         | Yes       |
 | `-e`                    | override the executable named in the script file         | `string` |       | No        |
+| `-r`                    | runner file describing how to launch an implementation   | `string` |     | No        |
 | `-d`                    | dont fail on external command failures                   | `bool` | `false` | No        |
 | `-l`                    | log level to use with logs (`none`, `error`, `info` or `debug`) | `enum` | `none`  | No        |
 | `-q`                    | no output                                                | `bool` | `false` | No        |
@@ -153,6 +154,19 @@ redactions:
 steps:
   - line: "finished in {{elapsed}}ms"
 ```
+
+### Runners
+
+A runner file says *how* to start an implementation; a script says *which*
+program and what it should print:
+
+```
+prescript play scripts/33-dice.yaml --runner runners/ruby.yaml -- 33_Dice/ruby/dice.rb
+```
+
+One runner per language and one script per program means a hundred programs in
+a dozen languages is a hundred-odd files rather than twelve hundred. See
+[docs/script-format.md](docs/script-format.md#runners).
 
 ### When a run fails
 

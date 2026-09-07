@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "version",
+    "executable"
+  ],
+  "properties": {
+    "version": {
+      "description": "Format version, MAJOR.MINOR, shared with the script format. See docs/script-format.md.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "name": {
+      "description": "What to call this runner in output. Defaults to the file's name.",
+      "type": "string"
+    },
+    "executable": {
+      "description": "The program that launches an implementation, for example ruby or python3.",
+      "type": "string"
+    },
+    "arguments": {
+      "description": "Arguments the runner always passes, before the ones naming the program to run.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "env": {
+      "description": "Environment the runner needs. Merged with the script's own env, which wins where the two name the same variable.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "inheritEnv": {
+      "description": "Put prescript's own environment underneath the declared env. Set by either the runner or the script.",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

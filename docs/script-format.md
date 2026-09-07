@@ -71,6 +71,7 @@ but means nothing is worse than no version at all.
 | `0.2` | Added `env` and `inheritEnv` to a run. |
 | `0.3` | A script may hold more than one run. |
 | `0.4` | Added `redactions`, superseding `isRegex`. |
+| `0.5` | Added runner files. |
 
 ### Known limitation
 
@@ -258,3 +259,58 @@ A placeholder naming a redaction the script does not declare is rejected, and
 the message lists the ones it does declare. A redaction whose pattern does not
 compile is reported once, against the declaration rather than against every step
 that refers to it. A step cannot be both `isRegex` and use redactions.
+
+## Runners
+
+A runner says *how* to start an implementation; a script says *which* program to
+start and what it should print. Splitting them is what lets one script be played
+against every port of the same program:
+
+```
+scripts/33-dice.yaml       # one per program, shared across all implementations
+runners/ruby.yaml          # one per language, shared across all programs
+runners/haskell.yaml
+```
+
+```
+prescript play scripts/33-dice.yaml --runner runners/ruby.yaml -- 33_Dice/ruby/dice.rb
+```
+
+A hundred programs in a dozen languages is then a hundred-odd files rather than
+twelve hundred.
+
+```yaml
+# runners/ruby.yaml
+version: "0.5"
+executable: ruby
+arguments: ["-W0"]
+env:
+  RUBYOPT: "--disable-gems"
+```
+
+A runner file is read as YAML or JSON by the same rule as a script, declares a
+version from the same list, and is rejected in the same terms. Its `name`
+defaults to the file's own name.
+
+### How a runner and a script combine
+
+| | result |
+| --- | --- |
+| `executable` | the runner's, replacing whatever the script named |
+| `arguments` | the runner's first, then the script's (or the command line's) |
+| `env` | merged; the script wins where both name the same variable |
+| `inheritEnv` | set if either sets it |
+
+The argument order is the point: the runner's arguments are the interpreter's
+own flags, and everything after them names the program to feed it. That is also
+why the two halves stay separate rather than being flattened — the arguments
+after `--` replace the script's half and leave the runner's alone, so
+
+```
+prescript play 33-dice.yaml --runner runners/ruby.yaml -- 33_Dice/ruby/dice.rb
+```
+
+runs `ruby -W0 33_Dice/ruby/dice.rb`.
+
+`--exec` still wins over a runner's executable, and says so on stderr when both
+are given.

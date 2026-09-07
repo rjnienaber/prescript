@@ -25,20 +25,31 @@ var SchemaBytes []byte
 // description of the format and one set of error messages, whichever a script
 // happens to be written in.
 func ParseScriptFromFile(filePath string) (Script, error) {
-	contents, err := os.ReadFile(filePath)
+	contents, err := readScriptFile(filePath)
 	if err != nil {
 		return Script{}, err
+	}
+
+	return ParseScriptFromBytes(contents)
+}
+
+// readScriptFile reads a script or a runner, as YAML when the extension says
+// so and as JSON otherwise, and hands back JSON either way.
+func readScriptFile(filePath string) ([]byte, error) {
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
 	}
 
 	switch strings.ToLower(filepath.Ext(filePath)) {
 	case ".yaml", ".yml":
 		contents, err = yamlToJson(contents)
 		if err != nil {
-			return Script{}, fmt.Errorf("could not read %s as YAML: %w", filePath, err)
+			return nil, fmt.Errorf("could not read %s as YAML: %w", filePath, err)
 		}
 	}
 
-	return ParseScriptFromBytes(contents)
+	return contents, nil
 }
 
 func yamlToJson(document []byte) ([]byte, error) {

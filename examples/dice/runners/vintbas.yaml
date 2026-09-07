@@ -1,0 +1,11 @@
+# A runner says how to start an implementation. One per language, shared by
+# every script, which is what keeps a corpus of a hundred programs in a dozen
+# languages at roughly a hundred files rather than twelve hundred.
+version: "0.5"
+executable: vintbas
+
+# Seeding belongs to the interpreter, not to any one program it runs: the
+# patched vintbas takes its RNG seed from here, so every script played through
+# this runner produces the same output on every machine.
+env:
+  VINTBAS_SEED: "0"

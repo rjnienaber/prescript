@@ -41,7 +41,21 @@ func main() {
 			os.Exit(utils.USER_ERROR)
 		}
 
-		result := play.RunAll(config.Play, scriptFile.Runs, config.Logger)
+		runs := scriptFile.Runs
+		if config.Play.RunnerFile != "" {
+			runner, err := script.ParseRunnerFromFile(config.Play.RunnerFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "could not parse runner file %s: %s\n", config.Play.RunnerFile, err)
+				os.Exit(utils.USER_ERROR)
+			}
+			if config.Play.ExecutablePath != "" {
+				fmt.Fprintf(os.Stderr, "warning: --exec overrides the executable named by runner %s\n", runner.Name)
+			}
+			logger.Infof("running with runner %s", runner.Name)
+			runs = script.ApplyRunner(runs, runner)
+		}
+
+		result := play.RunAll(config.Play, runs, config.Logger)
 		if config.Play.DontFail {
 			os.Exit(utils.SUCCESS)
 		} else {

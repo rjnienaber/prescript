@@ -26,12 +26,21 @@ func getExecutableFilePath(config cfg.PlayConfig, run script.Run) (string, error
 // Arguments supplied on the command line, after a `--` separator, take
 // precedence over those recorded in the script file. This lets one script be
 // replayed against a different implementation without editing it.
+//
+// A runner's arguments are not part of that contest and always come first:
+// they name the interpreter's own flags, while everything after them names the
+// program to feed it.
 func getArguments(config cfg.PlayConfig, run script.Run) []string {
+	arguments := run.Arguments
 	if len(config.Arguments) > 0 {
-		return config.Arguments
+		arguments = config.Arguments
 	}
 
-	return run.Arguments
+	if len(run.RunnerArguments) == 0 {
+		return arguments
+	}
+
+	return append(append([]string{}, run.RunnerArguments...), arguments...)
 }
 
 // reportFailure explains a failed run to whoever is watching. It writes to
