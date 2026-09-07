@@ -109,7 +109,7 @@ func TestReportShowsBothSidesAgainstTheReference(t *testing.T) {
 	report := Compare(runs, outcomes).Report()
 
 	assert.Contains(t, report, "=== comparison against basic ===")
-	assert.Contains(t, report, "step 2 of 2 (no-match)")
+	assert.Contains(t, report, "step 2 of 2 (no-match, formatting)")
 	assert.Contains(t, report, `  basic  " 7             807 "`)
 	assert.Contains(t, report, `  ruby   "7 807"`)
 	assert.Contains(t, report, "^ first difference")
@@ -239,4 +239,146 @@ func TestColumnsLineUpAcrossFindings(t *testing.T) {
 		}
 	}
 	assert.Len(t, columns, 1)
+}
+
+func drew(count int) *int { return &count }
+
+// BASIC's PRINT puts a space before a non-negative number and another after
+// it, and ports get that wrong constantly. Told apart from a wrong number, the
+// whole class can be filed once per language instead of once per program.
+func TestWhitespaceOnlyDivergenceIsFormatting(t *testing.T) {
+	t.Parallel()
+
+	runs := []script.Run{comparableRun("basic"), comparableRun("ruby")}
+	outcomes := []Outcome{matchedOutcome("basic"), divergedOutcome("ruby", atStep(1, "7 807"))}
+
+	comparison := Compare(runs, outcomes)
+
+	assert.Equal(t, Formatting, comparison.Groups[0].Classification.Shape)
+}
+
+// Where a line breaks is layout by any reading, so a port that split one
+// logical line across two prints is not accused of computing something else.
+func TestALineBrokenInTwoIsStillFormatting(t *testing.T) {
+	t.Parallel()
+
+	runs := []script.Run{comparableRun("basic"), comparableRun("ruby")}
+	outcomes := []Outcome{matchedOutcome("basic"), divergedOutcome("ruby", atStep(1, "7", "807"))}
+
+	comparison := Compare(runs, outcomes)
+
+	assert.Equal(t, Formatting, comparison.Groups[0].Classification.Shape)
+}
+
+// Case is text, not layout. A port that shouts where the reference whispers
+// has changed what it printed.
+func TestADifferentNumberOrDifferentCaseIsSemantic(t *testing.T) {
+	t.Parallel()
+
+	for _, received := range []string{" 7             806 ", " 7   eight-oh-seven "} {
+		runs := []script.Run{comparableRun("basic"), comparableRun("ruby")}
+		outcomes := []Outcome{matchedOutcome("basic"), divergedOutcome("ruby", atStep(1, received))}
+
+		comparison := Compare(runs, outcomes)
+
+		assert.Equal(t, Semantic, comparison.Groups[0].Classification.Shape, received)
+	}
+}
+
+// A pattern is not a line, so there is nothing to normalise and no honest
+// answer to give.
+func TestARedactedStepIsNotClassifiedByShape(t *testing.T) {
+	t.Parallel()
+
+	divergence := atStep(1, "7 807")
+	divergence.Redacted = true
+	runs := []script.Run{comparableRun("basic"), comparableRun("ruby")}
+	outcomes := []Outcome{matchedOutcome("basic"), divergedOutcome("ruby", divergence)}
+
+	comparison := Compare(runs, outcomes)
+
+	assert.Equal(t, UnknownShape, comparison.Groups[0].Classification.Shape)
+	assert.NotContains(t, comparison.Report(), "semantic")
+}
+
+// A port that had drawn nothing cannot be diverging over the numbers it drew,
+// and that is true whether or not the reference can say what it drew.
+func TestAPortThatDrewNothingSaysSoWithoutTheReference(t *testing.T) {
+	t.Parallel()
+
+	ruby := divergedOutcome("ruby", atStep(1, "seven"))
+	ruby.Draws = drew(0)
+	runs := []script.Run{comparableRun("basic"), comparableRun("ruby")}
+	outcomes := []Outcome{matchedOutcome("basic"), ruby}
+
+	comparison := Compare(runs, outcomes)
+
+	assert.Equal(t, NoDraws, comparison.Groups[0].Classification.Draws)
+	assert.Contains(t, comparison.Report(), "(no-match, semantic, no-draws)")
+}
+
+// Same numbers asked for in the same places: the difference is in what the
+// port did with them, which is a logic bug worth filing.
+func TestDrawingAsMuchAsTheReferenceIsALogicBug(t *testing.T) {
+	t.Parallel()
+
+	reference := matchedOutcome("basic")
+	reference.Draws = drew(12)
+	ruby := divergedOutcome("ruby", atStep(1, "seven"))
+	ruby.Draws = drew(12)
+
+	comparison := Compare([]script.Run{comparableRun("basic"), comparableRun("ruby")},
+		[]Outcome{reference, ruby})
+
+	assert.Equal(t, SameDraws, comparison.Groups[0].Classification.Draws)
+}
+
+func TestDrawingADifferentAmountFromTheReferenceNeedsAHuman(t *testing.T) {
+	t.Parallel()
+
+	reference := matchedOutcome("basic")
+	reference.Draws = drew(12)
+	ruby := divergedOutcome("ruby", atStep(1, "seven"))
+	ruby.Draws = drew(9)
+
+	comparison := Compare([]script.Run{comparableRun("basic"), comparableRun("ruby")},
+		[]Outcome{reference, ruby})
+
+	assert.Equal(t, DifferentDraws, comparison.Groups[0].Classification.Draws)
+}
+
+// Two ports printing the same thing at the same step having drawn different
+// amounts is itself the finding, and it does not need the reference to say it.
+func TestPortsInOneFindingThatDrewDifferentAmounts(t *testing.T) {
+	t.Parallel()
+
+	ruby := divergedOutcome("ruby", atStep(1, "seven"))
+	ruby.Draws = drew(4)
+	python := divergedOutcome("python", atStep(1, "seven"))
+	python.Draws = drew(9)
+
+	comparison := Compare(
+		[]script.Run{comparableRun("basic"), comparableRun("ruby"), comparableRun("python")},
+		[]Outcome{matchedOutcome("basic"), ruby, python})
+
+	assert.Len(t, comparison.Groups, 1)
+	assert.Equal(t, DifferentDraws, comparison.Groups[0].Classification.Draws)
+}
+
+// The reference interpreter does not report its draws, so most real runs
+// cannot answer this axis. Saying "unknown" on every line of every report
+// would be noise, and a token that is always there carries nothing.
+func TestAnUnknownDrawCountIsLeftOutRatherThanNamed(t *testing.T) {
+	t.Parallel()
+
+	ruby := divergedOutcome("ruby", atStep(1, "seven"))
+	ruby.Draws = drew(9)
+
+	comparison := Compare([]script.Run{comparableRun("basic"), comparableRun("ruby")},
+		[]Outcome{matchedOutcome("basic"), ruby})
+
+	assert.Equal(t, UnknownDraws, comparison.Groups[0].Classification.Draws)
+	report := comparison.Report()
+	assert.Contains(t, report, "(no-match, semantic)")
+	assert.NotContains(t, report, "unknown")
 }

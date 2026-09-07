@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	cfg "github.com/rjnienaber/prescript/internal/config"
@@ -63,6 +65,9 @@ func getTerminal(config cfg.PlayConfig, run script.Run) (utils.Terminal, error) 
 // every port.
 const tapeVariable = "PRESCRIPT_TAPE"
 
+// usageVariable is where a shim writes how many values it drew.
+const usageVariable = "PRESCRIPT_TAPE_USAGE"
+
 // childEnvironment is the environment the executable is started with, plus the
 // tape if one was named.
 //
@@ -76,7 +81,7 @@ const tapeVariable = "PRESCRIPT_TAPE"
 // The path is made absolute because the value outlives this process's idea of
 // where it is: it is read by a shim, inside an interpreter, started by a
 // runner that may have been written anywhere.
-func childEnvironment(config cfg.PlayConfig, run script.Run) ([]string, error) {
+func childEnvironment(config cfg.PlayConfig, run script.Run, usage string) ([]string, error) {
 	environment := run.Environment(os.Environ())
 	if config.Tape == "" {
 		return environment, nil
@@ -97,7 +102,65 @@ func childEnvironment(config cfg.PlayConfig, run script.Run) ([]string, error) {
 	if environment == nil {
 		environment = os.Environ()
 	}
-	return append(environment, tapeVariable+"="+tape), nil
+	environment = append(environment, tapeVariable+"="+tape)
+
+	if usage != "" {
+		environment = append(environment, usageVariable+"="+usage)
+	}
+	return environment, nil
+}
+
+// tapeUsagePath is where the shim is told to write how much of the tape it
+// drew. Prescript asks for it rather than waiting to be told, because the
+// count is what separates a port with a logic bug from one that consumes
+// randomness in a different order, and a classification that only happens when
+// somebody remembered to set a variable is one that mostly does not happen.
+//
+// A run that names its own path keeps it: a script or a test that wants the
+// file afterwards has said where to leave it.
+func tapeUsagePath(config cfg.PlayConfig, run script.Run) (string, func()) {
+	nothing := func() {}
+	if config.Tape == "" {
+		return "", nothing
+	}
+
+	for _, declared := range run.Environment(os.Environ()) {
+		if strings.HasPrefix(declared, usageVariable+"=") {
+			return strings.TrimPrefix(declared, usageVariable+"="), nothing
+		}
+	}
+
+	file, err := os.CreateTemp("", "prescript-draws-*")
+	if err != nil {
+		// Not worth failing a run over. The classification is a convenience
+		// and the comparison is the point; without the count a divergence is
+		// reported unclassified rather than not at all.
+		return "", nothing
+	}
+
+	path := file.Name()
+	_ = file.Close()
+	return path, func() { _ = os.Remove(path) }
+}
+
+// drawsFrom reads back what the shim wrote. Nil means unknown -- no tape, no
+// shim, or a runtime with no shim to load one -- which is a different thing
+// from a port that drew nothing, and the two are not allowed to look alike.
+func drawsFrom(usage string) *int {
+	if usage == "" {
+		return nil
+	}
+
+	contents, err := os.ReadFile(usage)
+	if err != nil {
+		return nil
+	}
+
+	drawn, err := strconv.Atoi(strings.TrimSpace(string(contents)))
+	if err != nil {
+		return nil
+	}
+	return &drawn
 }
 
 // reportFailure explains a failed run to whoever is watching. It writes to
@@ -115,6 +178,19 @@ func reportFailure(message string) {
 // unreadable tape -- and a run that did not happen is not a run that
 // disagreed with anything.
 func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) Outcome {
+	usage, cleanUp := tapeUsagePath(config, run)
+	defer cleanUp()
+
+	outcome := play(config, run, logger, usage)
+
+	// Read after the run rather than during it, and after the executable has
+	// been killed on a timeout, so the count is what had been drawn when the
+	// run stopped rather than what was drawn while it was being read.
+	outcome.Draws = drawsFrom(usage)
+	return outcome
+}
+
+func play(config cfg.PlayConfig, run script.Run, logger utils.Logger, usage string) Outcome {
 	executablePath, err := getExecutableFilePath(config, run)
 	if err != nil {
 		return notPlayed(run, utils.USER_ERROR)
@@ -126,7 +202,7 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) Outcome {
 		return notPlayed(run, utils.USER_ERROR)
 	}
 
-	environment, err := childEnvironment(config, run)
+	environment, err := childEnvironment(config, run, usage)
 	if err != nil {
 		reportFailure(err.Error())
 		return notPlayed(run, utils.USER_ERROR)

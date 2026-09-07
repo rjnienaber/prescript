@@ -272,3 +272,68 @@ func TestAMissingTapeIsReportedBeforeTheRun(t *testing.T) {
 	assert.Equal(t, utils.USER_ERROR, exitCode)
 	assert.Contains(t, report, "could not read the tape")
 }
+
+// Nobody has to ask. The classification is only useful if it happens on every
+// run, and a count that appears when somebody remembered to set a variable is
+// one that mostly does not appear.
+func TestPrescriptCollectsTheDrawCountItself(t *testing.T) {
+	for _, language := range tapedRunners {
+		t.Run(language.runner, func(t *testing.T) {
+			t.Parallel()
+			runner := loadRunner(t, language.runner)
+			runs := script.ApplyRunner([]script.Run{drawingRun(t, language.program, referenceDraws)}, runner)
+
+			outcome := Run(tapedConfig(t), runs[0], &utils.CustomLogger{})
+
+			assert.Equal(t, 0, outcome.ExitCode)
+			if assert.NotNil(t, outcome.Draws) {
+				assert.Equal(t, 5, *outcome.Draws)
+			}
+		})
+	}
+}
+
+// Unknown is not zero. Without a tape there is no shim keeping count, and a
+// run that cannot say what it drew must not be read as one that drew nothing.
+func TestWithoutATapeTheDrawCountIsUnknown(t *testing.T) {
+	for _, language := range seededRunners {
+		t.Run(language.runner, func(t *testing.T) {
+			t.Parallel()
+			runner := loadRunner(t, language.runner)
+			runs := script.ApplyRunner([]script.Run{drawingRun(t, language.program, language.drawn)}, runner)
+
+			outcome := Run(drawingConfig(), runs[0], &utils.CustomLogger{})
+
+			assert.Equal(t, 0, outcome.ExitCode)
+			assert.Nil(t, outcome.Draws)
+		})
+	}
+}
+
+// A run that is killed for hanging runs no exit handler, so a count written
+// only on the way out would be missing from exactly the divergences that need
+// classifying. The shims write it as they go.
+func TestTheDrawCountSurvivesARunThatIsKilled(t *testing.T) {
+	for _, language := range tapedRunners {
+		t.Run(language.runner, func(t *testing.T) {
+			t.Parallel()
+			runner := loadRunner(t, language.runner)
+
+			// One step short of what the program prints, so prescript is still
+			// waiting when the timeout kills it.
+			run := drawingRun(t, language.program, referenceDraws)
+			run.Steps = append(run.Steps, script.Step{Line: "never printed"})
+			runs := script.ApplyRunner([]script.Run{run}, runner)
+
+			config := tapedConfig(t)
+			config.Timeout = getTimeout(2000)
+
+			outcome := Run(config, runs[0], &utils.CustomLogger{})
+
+			assert.NotEqual(t, 0, outcome.ExitCode)
+			if assert.NotNil(t, outcome.Draws) {
+				assert.Equal(t, 5, *outcome.Draws)
+			}
+		})
+	}
+}

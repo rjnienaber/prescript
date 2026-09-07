@@ -34,6 +34,29 @@ if (tapePath) {
 
   let drawn = 0;
 
+  // How much of the tape a port used is the number that separates a real logic
+  // bug from a port that restructured its draws, so it is written down rather
+  // than left to be inferred from the transcript.
+  //
+  // It is rewritten after every draw rather than once on exit, because the
+  // number that matters is how much had been drawn when the run stopped
+  // agreeing with the transcript -- and a run that diverged by hanging is
+  // killed, which fires no exit handler at all. Rewriting at offset 0 is safe
+  // without truncating: the count only ever grows, so its decimal form only
+  // ever gets longer and each write covers the last.
+  const usagePath = process.env.PRESCRIPT_TAPE_USAGE;
+  const usageFd = usagePath ? fs.openSync(usagePath, "w") : null;
+
+  const writeUsage = () => {
+    if (usageFd !== null) {
+      fs.writeSync(usageFd, `${drawn}\n`, 0);
+    }
+  };
+
+  // Written from the start, so that a port which drew nothing at all says so
+  // rather than saying nothing.
+  writeUsage();
+
   Math.random = function random() {
     // Running off the end is an error rather than a wrap. A port that draws
     // more than the reference did has restructured how it consumes
@@ -51,16 +74,10 @@ if (tapePath) {
       process.exit(1);
     }
 
-    return values[drawn++];
+    const value = values[drawn++];
+    writeUsage();
+    return value;
   };
-
-  // How much of the tape a port used is the number that separates a real logic
-  // bug from a port that restructured its draws, so it is written down rather
-  // than left to be inferred from the transcript.
-  const usagePath = process.env.PRESCRIPT_TAPE_USAGE;
-  if (usagePath) {
-    process.on("exit", () => fs.writeFileSync(usagePath, `${drawn}\n`));
-  }
 } else {
   // mulberry32: short enough to read in one sitting, and its whole state is a
   // single 32-bit word, which is what makes the sequence identical everywhere.

@@ -37,11 +37,32 @@ module PrescriptTape
 
     value = @values[@drawn]
     @drawn += 1
+    write_usage
     value
   end
 
   def self.drawn
     @drawn
+  end
+
+  # The count is rewritten after every draw rather than written once at exit,
+  # because the number that matters is how much had been drawn when the run
+  # stopped agreeing with the transcript -- and a run that diverged by hanging
+  # is killed, which runs no at_exit handler at all.
+  #
+  # Rewriting in place is safe without truncating: the count only ever grows,
+  # so its decimal form only ever gets longer, and each write covers the last.
+  def self.record_usage(path)
+    @usage = File.open(path, "w")
+    @usage.sync = true
+    write_usage
+  end
+
+  def self.write_usage
+    return unless @usage
+
+    @usage.seek(0)
+    @usage.write("#{@drawn}\n")
   end
 end
 
@@ -69,9 +90,10 @@ if (tape = ENV["PRESCRIPT_TAPE"]) && !tape.empty?
 
   # How much of the tape a port used is the number that separates a real logic
   # bug from a port that restructured its draws, so it is written down rather
-  # than left to be inferred from the transcript.
+  # than left to be inferred from the transcript. Written from the start, so
+  # that a port which drew nothing at all says so rather than saying nothing.
   if (usage = ENV["PRESCRIPT_TAPE_USAGE"]) && !usage.empty?
-    at_exit { File.write(usage, "#{PrescriptTape.drawn}\n") }
+    PrescriptTape.record_usage(usage)
   end
 else
   srand(Integer(ENV.fetch("PRESCRIPT_SEED", "0")))

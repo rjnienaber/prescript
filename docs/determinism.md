@@ -207,10 +207,27 @@ finding — the thing seeding hides behind numbers that are stable but different
 Starting the tape again would turn a clear answer into a transcript that merely
 looks wrong somewhere further down.
 
-For the same reason a shim writes down how much it used, when asked. Set
-`PRESCRIPT_TAPE_USAGE` to a path and it holds the number of values drawn after
-the program exits, which is what separates "this port has a logic bug" from
-"this port draws in a different order".
+For the same reason a shim writes down how much it used. `PRESCRIPT_TAPE_USAGE`
+names a path, and the file holds the number of values drawn — which is what
+separates "this port has a logic bug" from "this port draws in a different
+order", and is one of the two axes a divergence is
+[classified](comparison.md#what-the-tape-says) by.
+
+`prescript play --tape` sets that variable for itself, so the count is
+collected on every taped run rather than only when somebody remembered to ask.
+A run that names the variable itself keeps its own path.
+
+The count is rewritten after every draw rather than once on the way out. What
+matters is how much had been drawn when the run stopped agreeing with the
+transcript, and a run that diverged by hanging is killed — which fires no exit
+handler in any of these languages. Rewriting in place needs no truncation: the
+count only grows, so its decimal form only gets longer and each write covers
+the last.
+
+The file is also written before the first draw, so a port that drew nothing
+says so. Nothing at all is written when there is no tape, and unknown must not
+be read as zero: a port that drew nothing has said randomness is not implicated
+in its divergence, and one that cannot say has said nothing.
 
 ### What a tape does not fix
 

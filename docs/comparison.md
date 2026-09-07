@@ -98,6 +98,68 @@ after all 12 steps (hung)
   ruby  the executable had not exited after 30s
 ```
 
+## Classification
+
+Not every divergence is a bug worth filing, and two things about one can be
+worked out without a person reading it. Both appear as fixed tokens in the
+finding's header, next to the failure mode:
+
+```
+step 5 of 12 (no-match, formatting, no-draws)
+```
+
+They are tokens rather than prose so that a few hundred runs can be counted and
+sorted by them, and what is *not* known is left out rather than named — a token
+that appears on every line carries nothing.
+
+### Formatting or semantic
+
+Collapse every run of whitespace to one space, trim the ends, and compare
+again. If the two sides now agree, the divergence is `formatting`; otherwise it
+is `semantic`.
+
+This is worth separating for a reason beyond tidiness. BASIC's `PRINT` puts a
+space before a non-negative number and another after it, and `,` tabs to
+fourteen-column zones. Ports get this wrong constantly and identically, and
+filing each one separately would mean several hundred near-identical issues
+against the same repository — which would be ignored, reasonably. Formatting
+divergences belong together, one report per language; a semantic one is about a
+particular program and belongs on its own.
+
+The received lines are joined before normalising, so a port that broke one
+logical line across two prints is `formatting` — where a line breaks is layout
+by any reading. Case is not touched: a port that shouts where the reference
+whispers has changed the text, not its layout, and is `semantic`.
+
+A step matched through a [redaction](script-format.md#redactions) gets neither
+token. The expected side is a pattern rather than a line, so there is nothing
+to normalise and no honest answer to give.
+
+### What the tape says
+
+When a run is played with `--tape`, prescript asks the shim to record how many
+values it drew, and reads the count back afterwards — no variable to set, and
+the number is what had been drawn when the run *stopped*, not when it exited,
+so a run killed for hanging still reports one.
+
+| Token | What it means | What to do |
+| --- | --- | --- |
+| `no-draws` | the ports had taken nothing from the tape | randomness is not involved; file it |
+| `same-draws` | the ports and the reference drew the same amount | they asked in the same places and disagreed about the answer; file it |
+| `different-draws` | known counts that disagree, with the reference or with each other | the port consumes randomness in a different order; a person has to judge it |
+| *absent* | not enough counts are known | — |
+
+Two ports that printed the same thing at the same step having drawn different
+amounts is itself a finding, and says so without the reference.
+
+**The reference interpreter does not report its draws.** Vintage BASIC has no
+shim — a tape is *recorded from* it rather than replayed into it — so on a
+corpus run the reference's count is unknown and `same-draws` is out of reach.
+What survives is `no-draws`, which needs only the port, and disagreement
+between ports. The full table applies when the reference is itself a taped
+port, such as comparing Ruby against Python. Instrumenting the interpreter is
+[#40](https://github.com/rjnienaber/prescript/issues/40).
+
 ## Ports that were not compared
 
 Three things are not divergences, and saying they were would be the kind of
