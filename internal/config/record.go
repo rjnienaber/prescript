@@ -6,6 +6,7 @@ type RecordConfig struct {
 	DontCompress   bool
 	ScriptFile     string
 	ExecutablePath string
+	Terminal       string
 	Arguments      []string
 }
 
@@ -24,6 +25,7 @@ func createRecordSubCommand(config *Config) *cobra.Command {
 	}
 
 	recordCmd.Flags().BoolVarP(&config.Record.DontCompress, "dont-compress", "d", false, "don't compress lines to match on")
+	recordCmd.Flags().StringVar(&config.Record.Terminal, "terminal", "", "what to give the executable for its standard streams (pty or pipes)")
 
 	return recordCmd
 }

@@ -298,3 +298,106 @@ func TestRedactionStillFailsOnARealMismatch(t *testing.T) {
 
 	assert.NotEqual(t, 0, exitCode)
 }
+
+// What a pty is for: a program that asks whether it is talking to a terminal
+// gets a different answer, and the answer is the one it would get from a
+// person at a keyboard.
+func TestExecutableRunsUnderAPtyByDefault(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/tty.sh")
+	run := script.Run{Steps: []script.Step{
+		{Line: "STDOUT=terminal"},
+		{Line: "Name: ", Input: "Rachel"},
+		{Line: "Hello, Rachel"},
+	}}
+
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}
+
+func TestTerminalPipesGivesTheExecutablePipes(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/tty.sh")
+	config.Play.Terminal = "pipes"
+	run := script.Run{Steps: []script.Step{
+		{Line: "STDOUT=pipe"},
+		{Line: "Name: ", Input: "Rachel"},
+		{Line: "Hello, Rachel"},
+	}}
+
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}
+
+func TestRunCanAskForPipes(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/tty.sh")
+	run := script.Run{
+		Terminal: "pipes",
+		Steps: []script.Step{
+			{Line: "STDOUT=pipe"},
+			{Line: "Name: ", Input: "Rachel"},
+			{Line: "Hello, Rachel"},
+		},
+	}
+
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}
+
+// --terminal is the way to try a script the other way round without editing
+// it, so it has to beat what the script declared.
+func TestCommandLineTerminalOverridesTheScript(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/tty.sh")
+	config.Play.Terminal = "pty"
+	run := script.Run{
+		Terminal: "pipes",
+		Steps: []script.Step{
+			{Line: "STDOUT=terminal"},
+			{Line: "Name: ", Input: "Rachel"},
+			{Line: "Hello, Rachel"},
+		},
+	}
+
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}
+
+func TestUnrecognisedTerminalIsRejected(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/tty.sh")
+	config.Play.Terminal = "tty"
+
+	exitCode := Run(config.Play, script.Run{}, config.Logger)
+
+	assert.Equal(t, utils.USER_ERROR, exitCode)
+}
+
+// Echo is what makes a pty different from a pipe for input, and it has to be
+// off: with it on, everything prescript types would come straight back as
+// output the next step would have to expect.
+func TestInputIsNotEchoedBackUnderAPty(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/input.sh")
+	run := script.Run{Steps: []script.Step{
+		{Line: "Please enter your name: ", Input: "Richard"},
+		// Under an echoing terminal this line arrives prefixed with the
+		// "Richard" prescript just typed, and never matches.
+		{Line: "How do you do, Richard"},
+	}}
+
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}

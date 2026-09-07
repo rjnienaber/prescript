@@ -321,3 +321,38 @@ func TestUnnamedRunsDoNotCollide(t *testing.T) {
 	assert.Equal(t, "run 0", script.Runs[0].Name)
 	assert.Equal(t, "run 1", script.Runs[1].Name)
 }
+
+func TestTerminalIsParsed(t *testing.T) {
+	document := `{
+  "version": "0.6",
+  "runs": [{"arguments": [], "exitCode": 0, "terminal": "pipes", "steps": [{"line": "hi"}]}]
+}`
+	script, err := ParseScriptFromBytes([]byte(document))
+	assert.NoError(t, err)
+	assert.Equal(t, "pipes", script.Runs[0].Terminal)
+}
+
+// The two values are the whole vocabulary. A third is a typo for one of them,
+// and silently running under the default would be the wrong way to treat it.
+func TestUnknownTerminalIsRejected(t *testing.T) {
+	document := `{
+  "version": "0.6",
+  "runs": [{"arguments": [], "exitCode": 0, "terminal": "tty", "steps": [{"line": "hi"}]}]
+}`
+	_, err := ParseScriptFromBytes([]byte(document))
+	assert.Error(t, err)
+	expected := `Script validation errors:
+runs.0.terminal: runs.0.terminal must be one of the following: "pty", "pipes"`
+	assert.Equal(t, expected, err.Error())
+}
+
+// A run that says nothing gets the default, which is a pty.
+func TestTerminalDefaultsToEmpty(t *testing.T) {
+	document := `{
+  "version": "0.6",
+  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "hi"}]}]
+}`
+	script, err := ParseScriptFromBytes([]byte(document))
+	assert.NoError(t, err)
+	assert.Equal(t, "", script.Runs[0].Terminal)
+}

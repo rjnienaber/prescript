@@ -23,6 +23,7 @@ type Runner struct {
 	Arguments  []string          `json:"arguments,omitempty"`
 	Env        map[string]string `json:"env,omitempty"`
 	InheritEnv bool              `json:"inheritEnv,omitempty"`
+	Terminal   string            `json:"terminal,omitempty"`
 }
 
 func ParseRunnerFromFile(filePath string) (Runner, error) {
@@ -83,6 +84,13 @@ func ApplyRunner(runs []Run, runner Runner) []Run {
 		run.RunnerArguments = runner.Arguments
 		run.Env = mergeEnv(runner.Env, run.Env)
 		run.InheritEnv = run.InheritEnv || runner.InheritEnv
+
+		// As with env, the script wins: it describes this program, while the
+		// runner describes every program written in one language.
+		if run.Terminal == "" {
+			run.Terminal = runner.Terminal
+		}
+
 		merged[i] = run
 	}
 

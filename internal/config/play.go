@@ -14,6 +14,7 @@ type PlayConfig struct {
 	ScriptFile     string
 	ExecutablePath string
 	RunnerFile     string
+	Terminal       string
 	Arguments      []string
 }
 
@@ -35,6 +36,7 @@ func createPlaySubCommand(config *Config) *cobra.Command {
 	playCmd.Flags().StringVarP(&config.Play.LogLevel, "log-level", "l", "none", "log level to use with logs (none, error, info or debug)")
 	playCmd.Flags().StringVarP(&config.Play.ExecutablePath, "exec", "e", "", "override the executable named in the script file")
 	playCmd.Flags().StringVarP(&config.Play.RunnerFile, "runner", "r", "", "runner file describing how to launch an implementation")
+	playCmd.Flags().StringVar(&config.Play.Terminal, "terminal", "", "override what the executable is given for its standard streams (pty or pipes)")
 
 	defaultTimeout := 30 * time.Second
 	playCmd.Flags().DurationVarP(&config.Play.Timeout, "timeout", "t", defaultTimeout, "timeout waiting for output from external command")

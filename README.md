@@ -100,6 +100,7 @@ prescript play [script file] [flags] -- [executable arguments]
 | `-l`                    | log level to use with logs (`none`, `error`, `info` or `debug`) | `enum` | `none`  | No        |
 | `-q`                    | no output                                                | `bool` | `false` | No        |
 | `-t`                    | timeout waiting for output from external command         | `bool` | `30s  ` | No        |
+| `--terminal`            | what the executable is given for its standard streams (`pty` or `pipes`) | `enum` | `pty` | No        |
 | `-- [args]`             | arguments for the executable, overriding those in the script | `list` |     | No        |
 
 #### `record`
@@ -114,6 +115,8 @@ prescript record [script file] [executable] [flags] -- [args]
 | ------ | ------------------------------------------------------------------------- | ------ | ------- | --------- |
 | `[script file]`         | the script to use that contains the automated steps      | `bool` |         | Yes       |
 | `[executable]` | an executable to run the script against                  | `bool` |         | Yes        |
+| `-d`                    | don't compress lines to match on                         | `bool` | `false` | No        |
+| `--terminal`            | what the executable is given for its standard streams (`pty` or `pipes`) | `enum` | `pty` | No        |
 
 **N.B.** The `--` convention is used to stop processing arguments for `prescript`. Any arguments after
 this point are passed to the executable.
@@ -154,6 +157,20 @@ redactions:
 steps:
   - line: "finished in {{elapsed}}ms"
 ```
+
+### Terminals
+
+The executable is run under a pseudo-terminal, because that is what it is
+checking for when it decides how to behave. Under a pipe, C and Python switch
+from line buffering to a 4KB block buffer, and a prompt with no trailing
+newline can sit in that buffer while the program waits for the answer it has
+not yet delivered — a timeout against a program that works fine. Colour and
+progress bars are commonly switched off the same way.
+
+prescript clears echo and newline translation on the pty, so what it reads is
+the same stream a pipe would have given it. Use `terminal: pipes` in the script,
+or `--terminal pipes`, when the pipe is the thing being tested. See
+[docs/script-format.md](docs/script-format.md#terminal).
 
 ### Runners
 

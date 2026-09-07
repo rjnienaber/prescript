@@ -43,6 +43,19 @@ func getArguments(config cfg.PlayConfig, run script.Run) []string {
 	return append(append([]string{}, run.RunnerArguments...), arguments...)
 }
 
+// getTerminal decides what the program is given for its standard streams.
+// --terminal is an override for trying a script the other way round without
+// editing it, so it wins over what the script or runner declared.
+func getTerminal(config cfg.PlayConfig, run script.Run) (utils.Terminal, error) {
+	if config.Terminal != "" {
+		return utils.ParseTerminal(config.Terminal)
+	}
+
+	// A value from a file has already been through the schema's enum, so this
+	// only re-checks what the schema has said.
+	return utils.ParseTerminal(run.Terminal)
+}
+
 // reportFailure explains a failed run to whoever is watching. It writes to
 // stderr rather than through the logger on purpose: the default log level is
 // "none", so a failure routed through the logger is discarded and the run
@@ -59,12 +72,23 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 		return utils.USER_ERROR
 	}
 
-	executable, err := utils.StartExecutable(executablePath, getArguments(config, run), run.Environment(os.Environ()), logger)
+	terminal, err := getTerminal(config, run)
+	if err != nil {
+		reportFailure(err.Error())
+		return utils.USER_ERROR
+	}
+
+	executable, err := utils.StartExecutable(utils.ExecutableOptions{
+		Path:      executablePath,
+		Arguments: getArguments(config, run),
+		Env:       run.Environment(os.Environ()),
+		Terminal:  terminal,
+	}, logger)
 	if err != nil {
 		return utils.INTERNAL_ERROR
 	}
 
-	processor := NewOutputProcessor(executable.Stdout, logger)
+	processor := NewOutputProcessor(executable.Stdout, terminal != utils.TerminalPipes, logger)
 	matcher := NewStepMatcher(executable.Stdin, run.Steps, config.Quiet, logger)
 
 	for {

@@ -37,6 +37,11 @@ type Run struct {
 	Env        map[string]string `json:"env,omitempty"`
 	InheritEnv bool              `json:"inheritEnv,omitempty"`
 
+	// Terminal is what the program finds on its standard streams, "pty" or
+	// "pipes". Empty means the default, a pty. A run that was recorded through
+	// pipes says so, because a program's output can differ between the two.
+	Terminal string `json:"terminal,omitempty"`
+
 	// RunnerArguments come from a runner file rather than from the script, and
 	// always precede the run's own arguments: the runner names the interpreter
 	// and its flags, the script names the program to feed it.
