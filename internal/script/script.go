@@ -3,6 +3,7 @@ package script
 import (
 	_ "embed"
 	json2 "encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -48,8 +49,8 @@ func ParseScriptFromBytes(json []byte) (Script, error) {
 		}
 
 		regexErrors = validateRegexes(script.Runs)
+		regexErrors = append(regexErrors, ensureNames(script.Runs)...)
 		if len(regexErrors) == 0 {
-			ensureNames(script)
 			return script, err
 		}
 	}
@@ -147,12 +148,28 @@ func dontCompressCapturedLines(lines []utils.CapturedLine) []Step {
 	return steps
 }
 
-func ensureNames(script Script) {
-	// TODO: validate names are unique
-	for i := range script.Runs {
-		run := &script.Runs[i]
+// ensureNames gives every run a name and rejects a script in which two runs
+// end up with the same one. A name is how a run is identified in the output of
+// a multi-run script, so two runs called the same thing makes that output
+// ambiguous precisely when there is something to tell apart. Generated names
+// are checked alongside declared ones: a run explicitly called "run 1" collides
+// with the unnamed run at index 1.
+func ensureNames(runs []Run) []string {
+	var nameErrors []string
+	seen := map[string]int{}
+
+	for i := range runs {
+		run := &runs[i]
 		if run.Name == "" {
 			run.Name = "run " + strconv.Itoa(i)
 		}
+
+		if first, taken := seen[run.Name]; taken {
+			nameErrors = append(nameErrors, fmt.Sprintf("runs.%d.name: duplicate run name %s, already used by runs.%d", i, strconv.Quote(run.Name), first))
+			continue
+		}
+		seen[run.Name] = i
 	}
+
+	return nameErrors
 }

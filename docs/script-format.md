@@ -67,6 +67,7 @@ but means nothing is worse than no version at all.
 | --- | --- |
 | `0.1` | Initial format. |
 | `0.2` | Added `env` and `inheritEnv` to a run. |
+| `0.3` | A script may hold more than one run. |
 
 ### Known limitation
 
@@ -127,3 +128,39 @@ per-platform default is the machine-dependence this feature exists to remove.
 Resolving the executable named by the script is unaffected either way: prescript
 looks it up on *its own* `PATH` before starting the child, so a script naming
 `vintbas` finds the same binary whether or not the run declares an environment.
+
+## Multiple runs
+
+`runs` is an array, and a script may hold more than one. This is how two
+implementations of the same program are compared: each run names its own
+executable, and they share the steps they are expected to produce.
+
+```json
+{
+  "version": "0.3",
+  "runs": [
+    { "name": "reference", "executable": "vintbas", "arguments": ["dice.bas"], ... },
+    { "name": "port", "executable": "python", "arguments": ["dice.py"], ... }
+  ]
+}
+```
+
+Every run is played, even after one has failed. Stopping at the first failure
+would withhold the comparison the script was written to make: knowing the first
+of three ports is wrong says nothing about the other two. `prescript` exits with
+the first non-zero code and, when there was more than one run, ends with a line
+naming which of them failed.
+
+### Names
+
+Each run has a `name`, which is what identifies it in the output. A run without
+one is called `run N` after its position. Two runs may not end up with the same
+name, and generated names count: a run explicitly called `run 1` collides with
+the unnamed run at index 1.
+
+### Overriding a multi-run script from the command line
+
+`--exec` and the arguments after `--` apply to *every* run. That is meaningful
+when the runs differ in their steps and a mistake when they differ in their
+executable, and prescript cannot tell which was meant, so it warns rather than
+refusing.

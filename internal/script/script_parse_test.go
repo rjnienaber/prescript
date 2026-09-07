@@ -251,3 +251,73 @@ func TestOlderScriptsStillParse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, script.Runs[0].Environment([]string{"HOME=/home/richard"}))
 }
+
+func TestParsesMultipleRuns(t *testing.T) {
+	basicScript := `{
+  "version": "0.3",
+  "runs": [{
+    "name": "reference",
+    "executable": "vintbas",
+    "arguments": [],
+    "exitCode": 0,
+    "steps": [{"line": "hello"}]
+  }, {
+    "name": "port",
+    "executable": "python",
+    "arguments": [],
+    "exitCode": 0,
+    "steps": [{"line": "hello"}]
+  }]
+}`
+	script, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.NoError(t, err)
+	assert.Len(t, script.Runs, 2)
+	assert.Equal(t, "reference", script.Runs[0].Name)
+	assert.Equal(t, "port", script.Runs[1].Name)
+}
+
+func TestValidationFailsForDuplicateRunNames(t *testing.T) {
+	basicScript := `{
+  "version": "0.3",
+  "runs": [
+    {"name": "dice", "arguments": [], "exitCode": 0, "steps": [{"line": "hello"}]},
+    {"name": "dice", "arguments": [], "exitCode": 0, "steps": [{"line": "hello"}]}
+  ]
+}`
+	_, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.Error(t, err)
+	expected := `Script validation errors:
+runs.1.name: duplicate run name "dice", already used by runs.0`
+	assert.Equal(t, expected, err.Error())
+}
+
+// A generated name can collide with a declared one, and the check has to see
+// both or the ambiguity it exists to catch slips through.
+func TestValidationFailsWhenADeclaredNameCollidesWithAGeneratedOne(t *testing.T) {
+	basicScript := `{
+  "version": "0.3",
+  "runs": [
+    {"name": "run 1", "arguments": [], "exitCode": 0, "steps": [{"line": "hello"}]},
+    {"arguments": [], "exitCode": 0, "steps": [{"line": "hello"}]}
+  ]
+}`
+	_, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.Error(t, err)
+	expected := `Script validation errors:
+runs.1.name: duplicate run name "run 1", already used by runs.0`
+	assert.Equal(t, expected, err.Error())
+}
+
+func TestUnnamedRunsDoNotCollide(t *testing.T) {
+	basicScript := `{
+  "version": "0.3",
+  "runs": [
+    {"arguments": [], "exitCode": 0, "steps": [{"line": "hello"}]},
+    {"arguments": [], "exitCode": 0, "steps": [{"line": "hello"}]}
+  ]
+}`
+	script, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.NoError(t, err)
+	assert.Equal(t, "run 0", script.Runs[0].Name)
+	assert.Equal(t, "run 1", script.Runs[1].Name)
+}

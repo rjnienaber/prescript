@@ -41,7 +41,7 @@ func main() {
 			os.Exit(utils.USER_ERROR)
 		}
 
-		result := play.Run(config.Play, scriptFile.Runs[0], config.Logger)
+		result := play.RunAll(config.Play, scriptFile.Runs, config.Logger)
 		if config.Play.DontFail {
 			os.Exit(utils.SUCCESS)
 		} else {
