@@ -11,6 +11,13 @@
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+$"
     },
+    "redactions": {
+      "description": "Named patterns for the parts of a line that vary between runs, referred to from a step's line as {{name}}. Declared once for the whole script so two runs being compared normalise the same things the same way. Added in 0.4.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "runs": {
       "type": "array",
       "items": {
@@ -66,6 +73,7 @@
                   "type": "string"
                 },
                 "isRegex": {
+                  "description": "Match the whole line as a regular expression. Superseded by redactions, which keep the line readable as the output it stands for; see docs/script-format.md.",
                   "type": "boolean"
                 }
               }
