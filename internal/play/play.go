@@ -110,22 +110,26 @@ func reportFailure(message string) {
 	fmt.Fprintln(os.Stderr, message)
 }
 
-func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
+// Run plays one run and says how it ended. A non-success code with no
+// Failure means it never got as far as a step -- a missing executable, an
+// unreadable tape -- and a run that did not happen is not a run that
+// disagreed with anything.
+func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) Outcome {
 	executablePath, err := getExecutableFilePath(config, run)
 	if err != nil {
-		return utils.USER_ERROR
+		return notPlayed(run, utils.USER_ERROR)
 	}
 
 	terminal, err := getTerminal(config, run)
 	if err != nil {
 		reportFailure(err.Error())
-		return utils.USER_ERROR
+		return notPlayed(run, utils.USER_ERROR)
 	}
 
 	environment, err := childEnvironment(config, run)
 	if err != nil {
 		reportFailure(err.Error())
-		return utils.USER_ERROR
+		return notPlayed(run, utils.USER_ERROR)
 	}
 
 	executable, err := utils.StartExecutable(utils.ExecutableOptions{
@@ -135,7 +139,13 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 		Terminal:  terminal,
 	}, logger)
 	if err != nil {
-		return utils.INTERNAL_ERROR
+		// Said out loud rather than logged away. The default log level is
+		// "none", so a run that could not be started otherwise exits non-zero
+		// having given no reason at all -- and in a comparison it is named as
+		// one that could not be played, which invites the question this
+		// answers.
+		reportFailure(fmt.Sprintf("could not start %s: %s", executablePath, err))
+		return notPlayed(run, utils.INTERNAL_ERROR)
 	}
 
 	processor := NewOutputProcessor(executable.Stdout, terminal != utils.TerminalPipes, logger)
@@ -145,7 +155,7 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 		timeout := matcher.Timeout(config.Timeout)
 		tokenResult := processor.NextToken(timeout)
 		if tokenResult.Error != nil {
-			return reportInterrupted(&executable, &matcher, timeout, tokenResult.Error)
+			return reportInterrupted(run, &executable, &matcher, timeout, tokenResult.Error)
 		}
 
 		if tokenResult.Finished {
@@ -164,14 +174,14 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 
 		err = matcher.Match(char)
 		if err != nil {
-			return utils.INTERNAL_ERROR
+			return notPlayed(run, utils.INTERNAL_ERROR)
 		}
 	}
 
 	exitCode, err := executable.WaitForExit()
 	if matcher.MissingSteps() {
-		reportFailure(matcher.FailureReport(ExitedEarly, fmt.Sprintf("the executable exited with %d", exitCode)))
-		return utils.CLI_ERROR
+		return diverged(run, utils.CLI_ERROR,
+			matcher.Divergence(ExitedEarly, fmt.Sprintf("the executable exited with %d", exitCode)))
 	}
 
 	// A non-zero exit arrives as an ExitError, and that is the program's answer
@@ -181,19 +191,34 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 	var exitError *exec.ExitError
 	if err != nil && !errors.As(err, &exitError) {
 		logger.Error("error waiting for process to finish: ", err)
-		return utils.INTERNAL_ERROR
+		return notPlayed(run, utils.INTERNAL_ERROR)
 	}
 
 	// we rely on exit code in the script to know whether to fail on errors
 	if exitCode != run.ExitCode {
-		msg := matcher.FailureReport(WrongExitCode,
+		divergence := matcher.Divergence(WrongExitCode,
 			fmt.Sprintf("the executable exited with %d and the script expects %d", exitCode, run.ExitCode))
-		logger.Info(msg)
-		reportFailure(msg)
-		return utils.INTERNAL_ERROR
+		logger.Info(divergence.Report())
+		return diverged(run, utils.INTERNAL_ERROR, divergence)
 	}
 
-	return utils.SUCCESS
+	return Outcome{Name: run.Name, ExitCode: utils.SUCCESS}
+}
+
+// notPlayed is a run that could not be attempted, or that failed prescript
+// rather than the script. Whatever went wrong has already been said; there is
+// no divergence to record because nothing was compared.
+func notPlayed(run script.Run, code int) Outcome {
+	return Outcome{Name: run.Name, ExitCode: code}
+}
+
+// diverged reports the divergence as it records it. Reporting here rather than
+// at each call site is what keeps the two the same thing: a divergence that
+// went into an outcome without being printed would be one a single-run script
+// never mentions.
+func diverged(run script.Run, code int, divergence Divergence) Outcome {
+	reportFailure(divergence.Report())
+	return Outcome{Name: run.Name, ExitCode: code, Failure: &divergence}
 }
 
 // reportInterrupted deals with a run that stopped while the program was still
@@ -209,17 +234,18 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 // at; a program that matched every step and then would not exit is waiting for
 // something nobody is going to send. Those are different bugs and they are
 // named differently.
-func reportInterrupted(executable *utils.Executable, matcher *StepMatcher, timeout time.Duration, err error) int {
+func reportInterrupted(run script.Run, executable *utils.Executable, matcher *StepMatcher, timeout time.Duration, err error) Outcome {
 	executable.Terminate()
 
 	switch {
 	case !errors.Is(err, ErrTimeout):
-		reportFailure(matcher.FailureReport(ReadFailed, fmt.Sprintf("could not read from the executable: %s", err)))
+		return diverged(run, utils.CLI_ERROR,
+			matcher.Divergence(ReadFailed, fmt.Sprintf("could not read from the executable: %s", err)))
 	case matcher.MissingSteps():
-		reportFailure(matcher.FailureReport(NoMatch, fmt.Sprintf("nothing matched it within %s", timeout)))
+		return diverged(run, utils.CLI_ERROR,
+			matcher.Divergence(NoMatch, fmt.Sprintf("nothing matched it within %s", timeout)))
 	default:
-		reportFailure(matcher.FailureReport(Hung, fmt.Sprintf("the executable had not exited after %s", timeout)))
+		return diverged(run, utils.CLI_ERROR,
+			matcher.Divergence(Hung, fmt.Sprintf("the executable had not exited after %s", timeout)))
 	}
-
-	return utils.CLI_ERROR
 }

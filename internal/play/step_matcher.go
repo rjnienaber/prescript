@@ -3,10 +3,7 @@ package play
 import (
 	"fmt"
 	"io"
-	"strconv"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/rjnienaber/prescript/internal/script"
 	"github.com/rjnienaber/prescript/internal/utils"
@@ -95,58 +92,34 @@ func (matcher *StepMatcher) receivedLine() string {
 	return ""
 }
 
-// FailureReport explains why a run stopped short, in a form meant to be read
-// by a person or pasted into a bug report. mode names which of the ways it
-// went wrong, and detail says what was observed, for example "the executable
-// exited with 1".
-//
-// Everything in a report is either a fixed string, something the script says,
-// or something the program printed. Nothing is measured: a timeout reports the
-// limit it was given and not how long it actually waited, so two runs of the
-// same divergence produce the same bytes and a real change stands out from a
-// slow machine.
-//
-// Lines are quoted because trailing whitespace is load-bearing: prompts
-// routinely end in a space, and an unquoted report makes a step that differs
-// only in that respect look identical to the one it failed to match.
-func (matcher *StepMatcher) FailureReport(mode FailureMode, detail string) string {
+// Divergence records where this run stopped agreeing with its transcript.
+// mode names which of the ways it went wrong, and detail says what was
+// observed, for example "the executable exited with 1".
+func (matcher *StepMatcher) Divergence(mode FailureMode, detail string) Divergence {
+	divergence := Divergence{
+		Mode:      mode,
+		Detail:    detail,
+		StepIndex: matcher.currentStepIndex,
+		StepCount: len(matcher.steps),
+	}
+
 	if !matcher.MissingSteps() {
-		return fmt.Sprintf("%s: all %d steps matched, but %s", mode, len(matcher.steps), detail)
+		return divergence
 	}
 
 	step := matcher.steps[matcher.currentStepIndex]
-	expected, received := matcher.NextExpectedLine(), matcher.receivedLine()
+	divergence.Expected = step.Line
+	divergence.Received = matcher.receivedLine()
+	divergence.Redacted = step.Redacted
+	divergence.Context = matcher.contextLines()
+	return divergence
+}
 
-	var report strings.Builder
-	fmt.Fprintf(&report, "%s: step %d of %d did not match (%s)\n\n",
-		mode, matcher.currentStepIndex+1, len(matcher.steps), detail)
-	if step.Redacted {
-		fmt.Fprintf(&report, "  expected  %q  (with redactions applied)\n", expected)
-	} else {
-		fmt.Fprintf(&report, "  expected  %q\n", expected)
-	}
-	fmt.Fprintf(&report, "  received  %q\n", received)
-	// A character-level pointer only means something when the two are meant to
-	// be equal; against a pattern the first differing byte is noise.
-	if !step.Redacted {
-		report.WriteString(differenceMarker(expected, received, len(reportLabelIndent)))
-	}
-
-	// The preceding lines are what makes a mismatch diagnosable when the
-	// received line is not the interesting one, e.g. the executable printed an
-	// error and exited before ever reaching the prompt.
-	if context := matcher.contextLines(); len(context) > 0 {
-		report.WriteString("\n  output since the last matched step:\n")
-		for _, line := range context {
-			fmt.Fprintf(&report, "    %s\n", line)
-		}
-	}
-
-	if remaining := len(matcher.steps) - matcher.currentStepIndex - 1; remaining > 0 {
-		fmt.Fprintf(&report, "\n%s never reached\n", pluralSteps(remaining))
-	}
-
-	return report.String()
+// FailureReport is the divergence written out. Kept as one call because the
+// overwhelmingly common case -- a single run, reported to stderr and read by a
+// person -- has no use for the value in between.
+func (matcher *StepMatcher) FailureReport(mode FailureMode, detail string) string {
+	return matcher.Divergence(mode, detail).Report()
 }
 
 // contextLines are the completed lines leading up to the failure, excluding the
@@ -157,53 +130,6 @@ func (matcher *StepMatcher) contextLines() []string {
 		lines = lines[:len(lines)-1]
 	}
 	return lines
-}
-
-// reportLabelIndent is the prefix in front of the quoted expected/received
-// lines. differenceMarker needs its width to line a caret up underneath.
-const reportLabelIndent = "  received  "
-
-// differenceMarker points at the first character where the received line
-// diverged from the expected one. Spotting that by eye in two quoted strings
-// is exactly the tedium this tool exists to remove, and it is worst in the
-// cases that matter most: a changed letter mid-word, or a trailing space.
-func differenceMarker(expected, received string, indent int) string {
-	// With nothing received there is nothing to point at, and the empty quotes
-	// above already say it plainly.
-	if expected == received || received == "" {
-		return ""
-	}
-
-	prefix := commonPrefix(expected, received)
-	label := "first difference"
-	if prefix == received {
-		label = "received output ends here"
-	}
-
-	// The caret indexes the quoted rendering, so measure the prefix as it will
-	// appear once escaped. Quote adds a pair of quotes; only the opening one
-	// sits between the indent and the first differing character.
-	column := indent + len(strconv.Quote(prefix)) - 1
-	return fmt.Sprintf("%s^ %s\n", strings.Repeat(" ", column), label)
-}
-
-func commonPrefix(a, b string) string {
-	offset := 0
-	for _, char := range a {
-		width := utf8.RuneLen(char)
-		if offset+width > len(b) || a[offset:offset+width] != b[offset:offset+width] {
-			break
-		}
-		offset += width
-	}
-	return a[:offset]
-}
-
-func pluralSteps(count int) string {
-	if count == 1 {
-		return "1 later step was"
-	}
-	return fmt.Sprintf("%d later steps were", count)
 }
 
 func (matcher *StepMatcher) Match(char string) error {

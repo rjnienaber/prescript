@@ -262,6 +262,30 @@ see [docs/script-format.md](docs/script-format.md#failure-modes).
 A run that times out kills the program before writing its report, and under a
 pty takes anything the program started with it.
 
+### Comparing implementations
+
+A script with more than one run is asking where the implementations stop
+agreeing, so it ends with a comparison rather than a stack of separate failure
+reports. The first run is the reference; every other one is lined up against it
+at the step where it left it, and ports that got the same thing wrong are one
+finding rather than several:
+
+```
+=== comparison against basic ===
+
+step 1 of 2 (exited-early)
+  basic         "YOU HAVE 3 GUESSES LEFT"
+  ruby, python  "You have 3 guesses left"
+                "TRY AGAIN"
+
+matched: perl
+could not be played: go
+```
+
+A port that plays a different transcript is not compared, and neither is one
+that never ran — neither of them has disagreed with anything. See
+[docs/comparison.md](docs/comparison.md).
+
 ### Development
 
 ```

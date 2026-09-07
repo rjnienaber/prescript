@@ -3,8 +3,6 @@ package play
 import (
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
 	cfg "github.com/rjnienaber/prescript/internal/config"
 	"github.com/rjnienaber/prescript/internal/script"
@@ -25,7 +23,7 @@ func RunAll(config cfg.PlayConfig, runs []script.Run, logger utils.Logger) int {
 	}
 
 	result := utils.SUCCESS
-	var failed []string
+	outcomes := make([]Outcome, 0, len(runs))
 
 	for _, run := range runs {
 		if multiple {
@@ -36,19 +34,20 @@ func RunAll(config cfg.PlayConfig, runs []script.Run, logger utils.Logger) int {
 			fmt.Fprintf(os.Stderr, "\n=== %s ===\n", run.Name)
 		}
 
-		code := Run(config, run, logger)
-		if code == utils.SUCCESS {
-			continue
-		}
-
-		failed = append(failed, strconv.Quote(run.Name))
-		if result == utils.SUCCESS {
-			result = code
+		outcome := Run(config, run, logger)
+		outcomes = append(outcomes, outcome)
+		if outcome.ExitCode != utils.SUCCESS && result == utils.SUCCESS {
+			result = outcome.ExitCode
 		}
 	}
 
-	if multiple && len(failed) > 0 {
-		fmt.Fprintf(os.Stderr, "\n%d of %d runs failed: %s\n", len(failed), len(runs), strings.Join(failed, ", "))
+	// The comparison rather than a tally of how many runs failed. It says
+	// everything the tally did -- a port that diverged is named, and so is one
+	// that never ran -- and says it aligned by the step where each port left
+	// the reference, which is the thing a multi-run script was written to
+	// find out.
+	if multiple {
+		fmt.Fprint(os.Stderr, Compare(runs, outcomes).Report())
 	}
 
 	return result

@@ -230,8 +230,12 @@ executable, and they share the steps they are expected to produce.
 Every run is played, even after one has failed. Stopping at the first failure
 would withhold the comparison the script was written to make: knowing the first
 of three ports is wrong says nothing about the other two. `prescript` exits with
-the first non-zero code and, when there was more than one run, ends with a line
-naming which of them failed.
+the first non-zero code.
+
+The first run is the reference, and a script with more than one ends with a
+comparison: every port lined up against that reference at the step where it
+left it, with ports that got the same thing wrong grouped into one finding. See
+[comparison.md](comparison.md).
 
 ### Names
 
