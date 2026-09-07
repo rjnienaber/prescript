@@ -1,5 +1,7 @@
 GCI_VERSION := v0.14.0
 IMAGE ?= prescript-env:dev
+PUBLISHED_IMAGE ?= ghcr.io/rjnienaber/prescript-env
+PUBLISHED_REF ?= $(PUBLISHED_IMAGE):latest
 VINTBAS_RELEASE := vintbas-1.0.3-1
 VINTBAS_ASSET := vintbas-$(shell uname -s | tr '[:upper:]' '[:lower:]')-$(shell uname -m)
 VINTBAS_URL := https://github.com/rjnienaber/prescript/releases/download/$(VINTBAS_RELEASE)/$(VINTBAS_ASSET)
@@ -39,6 +41,23 @@ tape:
 .PHONY: image
 image:
 	docker build --platform linux/amd64 -t $(IMAGE) docker
+
+# Publishing is what turns "the same Dockerfile" into "the same bytes": a
+# rebuild pins the same toolchains but produces its own layers, and only a
+# digest is a name a bug report can carry. CI pushes on main; this is here so
+# the same thing can be done by hand.
+.PHONY: push_image
+push_image:
+	./docker/publish.sh $(IMAGE) $(PUBLISHED_IMAGE)
+
+# Pulls the published environment and gives it the local name, so `make
+# docker_test` and docker/run.sh use it without knowing where it came from.
+# PUBLISHED_REF takes a digest as readily as a tag, and a digest is what to use
+# when reproducing someone else's run.
+.PHONY: pull_image
+pull_image:
+	docker pull --platform linux/amd64 $(PUBLISHED_REF)
+	docker tag $(PUBLISHED_REF) $(IMAGE)
 
 # The same checks CI runs, run in the same image CI runs them in.
 .PHONY: docker_test
