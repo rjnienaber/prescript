@@ -283,7 +283,19 @@ could not be played: go
 ```
 
 A port that plays a different transcript is not compared, and neither is one
-that never ran — neither of them has disagreed with anything. See
+that never ran — neither of them has disagreed with anything.
+
+Each finding is classified by two things that can be worked out without reading
+it, and they appear as fixed tokens beside the failure mode:
+
+```
+step 5 of 12 (no-match, formatting, no-draws)
+```
+
+`formatting` means the two sides agree once whitespace is collapsed — BASIC's
+spacing around numbers, which ports get wrong constantly and which belongs in
+one report per language rather than one per program. `no-draws` means the port
+had taken nothing from the tape, so randomness is not involved. See
 [docs/comparison.md](docs/comparison.md).
 
 ### Development

@@ -20,7 +20,6 @@ What this does not reach: random.Random(...) instances, secrets, and numpy,
 all of which have generators of their own.
 """
 
-import atexit
 import os
 import random
 
@@ -39,6 +38,30 @@ def _install_tape(path):
     values = _read_tape(path)
     drawn = 0
 
+    # How much of the tape a port used is the number that separates a real
+    # logic bug from a port that restructured its draws, so it is written down
+    # rather than left to be inferred from the transcript.
+    #
+    # It is rewritten after every draw rather than once at exit, because the
+    # number that matters is how much had been drawn when the run stopped
+    # agreeing with the transcript -- and a run that diverged by hanging is
+    # killed, which runs no atexit handler at all. Rewriting in place is safe
+    # without truncating: the count only ever grows, so its decimal form only
+    # ever gets longer and each write covers the last.
+    usage = os.environ.get("PRESCRIPT_TAPE_USAGE")
+    usage_file = open(usage, "w", encoding="utf-8") if usage else None
+
+    def write_usage():
+        if usage_file is None:
+            return
+        usage_file.seek(0)
+        usage_file.write("%d\n" % drawn)
+        usage_file.flush()
+
+    # Written from the start, so that a port which drew nothing at all says so
+    # rather than saying nothing.
+    write_usage()
+
     def next_value():
         # Running off the end is an error rather than a wrap. A port that draws
         # more than the reference did has restructured how it consumes
@@ -54,6 +77,7 @@ def _install_tape(path):
 
         value = values[drawn]
         drawn += 1
+        write_usage()
         return value
 
     instance = random._inst
@@ -68,13 +92,6 @@ def _install_tape(path):
     # The module-level names were bound to the instance's methods at import,
     # so the one that was captured has to be replaced by name as well.
     random.random = next_value
-
-    # How much of the tape a port used is the number that separates a real
-    # logic bug from a port that restructured its draws, so it is written down
-    # rather than left to be inferred from the transcript.
-    usage = os.environ.get("PRESCRIPT_TAPE_USAGE")
-    if usage:
-        atexit.register(lambda: open(usage, "w", encoding="utf-8").write("%d\n" % drawn))
 
 
 _tape = os.environ.get("PRESCRIPT_TAPE")

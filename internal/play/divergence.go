@@ -71,6 +71,13 @@ type Outcome struct {
 	Name     string
 	ExitCode int
 	Failure  *Divergence
+
+	// Draws is how many values this run took from the tape by the time it
+	// stopped, or nil when that is unknown -- no tape, or a runtime with no
+	// shim to replay one. Unknown is not zero: a port that drew nothing has
+	// told us randomness is not implicated in its divergence, and one that
+	// cannot say has told us nothing.
+	Draws *int
 }
 
 // Report explains a divergence to whoever is watching, in a form meant to be

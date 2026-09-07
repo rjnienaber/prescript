@@ -61,6 +61,15 @@ type DivergenceGroup struct {
 	Matched  bool
 
 	Ports []string
+
+	// Classification is what could be worked out about the finding without a
+	// person reading it: whether it is only about layout, and what the tape
+	// says about whether randomness is involved.
+	Classification Classification
+
+	// portDraws is what each port in Ports drew, in the same order, kept only
+	// long enough to classify the finding once every port has joined it.
+	portDraws []*int
 }
 
 // Compare lines up what each run did against the reference's transcript. It
@@ -88,8 +97,16 @@ func Compare(runs []script.Run, outcomes []Outcome) Comparison {
 		case outcome.Failure == nil:
 			comparison.NotPlayed = append(comparison.NotPlayed, outcome.Name)
 		default:
-			comparison.add(index, outcome.Name, *outcome.Failure)
+			comparison.add(index, outcome, *outcome.Failure)
 		}
+	}
+
+	// Classified once every port has joined its finding, because both axes are
+	// about the finding rather than about one port: ports that printed the
+	// same thing having drawn different amounts is itself the answer.
+	for at := range comparison.Groups {
+		group := &comparison.Groups[at]
+		group.Classification = group.classify(outcomes[0].Draws, group.portDraws)
 	}
 
 	// Earliest step first, and within a step the order the ports appear in the
@@ -104,7 +121,7 @@ func Compare(runs []script.Run, outcomes []Outcome) Comparison {
 	return comparison
 }
 
-func (comparison *Comparison) add(index map[string]int, port string, divergence Divergence) {
+func (comparison *Comparison) add(index map[string]int, outcome Outcome, divergence Divergence) {
 	group := DivergenceGroup{
 		StepIndex: divergence.StepIndex,
 		StepCount: divergence.StepCount,
@@ -121,11 +138,13 @@ func (comparison *Comparison) add(index map[string]int, port string, divergence 
 	key := fmt.Sprintf("%d\x00%s\x00%s", group.StepIndex, group.Mode,
 		strings.Join(group.Received, "\x00"))
 	if at, seen := index[key]; seen {
-		comparison.Groups[at].Ports = append(comparison.Groups[at].Ports, port)
+		comparison.Groups[at].Ports = append(comparison.Groups[at].Ports, outcome.Name)
+		comparison.Groups[at].portDraws = append(comparison.Groups[at].portDraws, outcome.Draws)
 		return
 	}
 
-	group.Ports = []string{port}
+	group.Ports = []string{outcome.Name}
+	group.portDraws = []*int{outcome.Draws}
 	index[key] = len(comparison.Groups)
 	comparison.Groups = append(comparison.Groups, group)
 }
@@ -184,6 +203,14 @@ func (comparison Comparison) Report() string {
 	return report.String()
 }
 
+// headline is what went wrong followed by what could be worked out about it,
+// in one parenthesised list of fixed tokens: `no-match, formatting, no-draws`.
+// One line rather than a second one under it, because a reader scanning a
+// report with twenty findings in it is deciding which to stop at.
+func (group DivergenceGroup) headline() string {
+	return strings.Join(append([]string{string(group.Mode)}, group.Classification.Tokens()...), ", ")
+}
+
 func (comparison Comparison) labelWidth() int {
 	width := len(comparison.Reference)
 	for _, group := range comparison.Groups {
@@ -211,12 +238,12 @@ func (group DivergenceGroup) report(reference string, width int) string {
 
 	var report strings.Builder
 	if group.Matched {
-		fmt.Fprintf(&report, "after all %d steps (%s)\n", group.StepCount, group.Mode)
+		fmt.Fprintf(&report, "after all %d steps (%s)\n", group.StepCount, group.headline())
 		fmt.Fprintf(&report, "  %-*s  %s\n", width, ports, strings.Join(group.Received, " "))
 		return report.String()
 	}
 
-	fmt.Fprintf(&report, "step %d of %d (%s)\n", group.StepIndex+1, group.StepCount, group.Mode)
+	fmt.Fprintf(&report, "step %d of %d (%s)\n", group.StepIndex+1, group.StepCount, group.headline())
 	if group.Redacted {
 		fmt.Fprintf(&report, "  %-*s  %q  (with redactions applied)\n", width, reference, group.Expected)
 	} else {
