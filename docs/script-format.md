@@ -3,6 +3,8 @@
 A script file describes what an interactive program prints and what should be
 typed back at it. `prescript record` writes one; `prescript play` replays it.
 
+It may be written in JSON or in YAML — see [File formats](#file-formats).
+
 ## Versioning
 
 Every script declares a `version`, of the form `MAJOR.MINOR`:
@@ -164,3 +166,39 @@ the unnamed run at index 1.
 when the runs differ in their steps and a mistake when they differ in their
 executable, and prescript cannot tell which was meant, so it warns rather than
 refusing.
+
+## File formats
+
+`prescript play` reads a script as YAML when the file ends in `.yaml` or `.yml`,
+and as JSON otherwise. `prescript record` writes JSON.
+
+YAML is converted to JSON and then validated by the same schema against the same
+Go types. There is one description of the format and one set of error messages,
+so the two notations cannot drift apart, and a YAML script is rejected in the
+same terms — including the same `runs.0.exitCode` style paths — as the JSON it
+converts to.
+
+YAML is the better authoring format, and the fixtures are meant to be written in
+it. It has comments, and the expected output is not buried in quoting.
+
+### Quote every expected line
+
+```yaml
+steps:
+  - line: "HOW MANY ROLLS? "
+    input: "5000"
+```
+
+YAML strips trailing whitespace from an unquoted scalar. A prompt almost always
+ends in a space, and a step that differs from the program's real output only in
+that space is the most annoying possible failure to read: the two look identical
+everywhere except in the report, which quotes them precisely because of this.
+
+Quote `input` too. An unquoted `5000` is a number, an unquoted `N` is a string,
+and an unquoted `y`, `no` or `on` is a boolean in YAML 1.1 readers — none of
+which is what a program reading from a terminal receives.
+
+### Keys have to be strings
+
+YAML allows a mapping key of any type; JSON does not. A script that uses one is
+rejected, rather than reaching the schema as something it cannot describe.

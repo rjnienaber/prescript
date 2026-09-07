@@ -1,0 +1,25 @@
+# The same script as dice.json, written the way a fixture is meant to be
+# authored. YAML buys two things JSON cannot give: comments, and expected
+# output that is not buried in quoting and escapes.
+version: "0.3"
+
+runs:
+  - name: reference
+    executable: vintbas
+    arguments: [examples/dice/dice.bas]
+    exitCode: 0
+
+    # The patched interpreter seeds its RNG from VINTBAS_SEED, so the histogram
+    # below is the same on every machine. Declaring env at all means the run
+    # gets exactly this and nothing else inherited.
+    env:
+      VINTBAS_SEED: "0"
+
+    steps:
+      # Quote every line. A prompt ends in a space, YAML strips trailing
+      # whitespace from an unquoted scalar, and a step that differs from the
+      # program's output only in that space is the hardest kind to debug.
+      - line: "HOW MANY ROLLS? "
+        input: "5000"
+      - line: "TRY AGAIN? "
+        input: "N"

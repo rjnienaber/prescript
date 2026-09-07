@@ -55,6 +55,7 @@ test:
 .PHONY: examples
 examples:
 	./tmp/prescript play examples/dice/dice.json
+	./tmp/prescript play examples/dice/dice.yaml
 
 .PHONY: prepush
 prepush: format lint test build_dev examples

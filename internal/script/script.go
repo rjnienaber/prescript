@@ -5,23 +5,57 @@ import (
 	json2 "encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rjnienaber/prescript/internal/config"
 	"github.com/rjnienaber/prescript/internal/utils"
 	schema "github.com/xeipuuv/gojsonschema"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed "script_schema.json"
 var SchemaBytes []byte
 
+// ParseScriptFromFile reads a script written as either JSON or YAML, chosen by
+// the file's extension. YAML is converted to JSON and validated by the same
+// schema against the same Go types, so the two cannot drift apart: there is one
+// description of the format and one set of error messages, whichever a script
+// happens to be written in.
 func ParseScriptFromFile(filePath string) (Script, error) {
-	json, err := os.ReadFile(filePath)
+	contents, err := os.ReadFile(filePath)
 	if err != nil {
 		return Script{}, err
 	}
-	return ParseScriptFromBytes(json)
+
+	switch strings.ToLower(filepath.Ext(filePath)) {
+	case ".yaml", ".yml":
+		contents, err = yamlToJson(contents)
+		if err != nil {
+			return Script{}, fmt.Errorf("could not read %s as YAML: %w", filePath, err)
+		}
+	}
+
+	return ParseScriptFromBytes(contents)
+}
+
+func yamlToJson(document []byte) ([]byte, error) {
+	var content any
+	if err := yaml.Unmarshal(document, &content); err != nil {
+		return nil, err
+	}
+
+	converted, err := json2.Marshal(content)
+	if err != nil {
+		// The case worth naming: YAML allows a mapping key of any type, JSON
+		// does not, and the error from encoding/json says only that it met a
+		// map[interface{}]interface{}.
+		return nil, fmt.Errorf("%w; every key in a script has to be a string", err)
+	}
+
+	return converted, nil
 }
 
 func ParseScriptFromBytes(json []byte) (Script, error) {

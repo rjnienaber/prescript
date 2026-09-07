@@ -119,7 +119,8 @@ this point are passed to the executable.
 
 ### Script files
 
-Script files are JSON, validated against a schema, and declare a format
+Script files are JSON or YAML — `.yaml` and `.yml` are read as YAML, anything
+else as JSON — validated against one schema, and declare a format
 version. See [docs/script-format.md](docs/script-format.md) for what that
 version means and how it changes.
 
@@ -138,6 +139,10 @@ scripts written before format `0.2` do.
 A script may hold more than one run, each naming its own executable, which is
 how two implementations of the same program are compared. Every run is played
 even after one fails, and `prescript` exits with the first non-zero code.
+
+Write fixtures in YAML: it has comments, and the expected output is not buried
+in quoting. Quote every `line` and `input` — YAML strips trailing whitespace
+from an unquoted scalar, and prompts end in a space.
 
 ### When a run fails
 
