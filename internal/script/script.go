@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	json2 "encoding/json"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/rjnienaber/prescript/internal/config"
@@ -41,6 +42,7 @@ func ParseScriptFromBytes(json []byte) (Script, error) {
 
 		regexErrors = validateRegexes(script.Runs)
 		if len(regexErrors) == 0 {
+			ensureNames(script)
 			return script, err
 		}
 	}
@@ -118,4 +120,14 @@ func dontCompressCapturedLines(lines []utils.CapturedLine) []Step {
 	}
 
 	return steps
+}
+
+func ensureNames(script Script) {
+	// TODO: validate names are unique
+	for i := range script.Runs {
+		run := &script.Runs[i]
+		if run.Name == "" {
+			run.Name = "run " + strconv.Itoa(i)
+		}
+	}
 }

@@ -11,6 +11,7 @@ func TestBasicScript(t *testing.T) {
 	basicScript := `{
   "version": "0.1",
   "runs": [{
+	"name": "list directories",
     "timestamp": "2021-04-08T23:21:42Z",
 	"executable": "/bin/ls",
     "arguments": [
@@ -32,6 +33,7 @@ func TestBasicScript(t *testing.T) {
 	assert.Len(t, script.Runs, 1)
 
 	run := script.Runs[0]
+	assert.Equal(t, "list directories", run.Name)
 	assert.Equal(t, "2021-04-08T23:21:42Z", run.Timestamp.Format(time.RFC3339))
 
 	assert.Equal(t, "/bin/ls", run.Executable)
@@ -49,6 +51,25 @@ func TestBasicScript(t *testing.T) {
 	assert.Equal(t, "", stepOne.Input)
 	assert.True(t, stepOne.IsRegex)
 	assert.True(t, stepOne.LineRegex.MatchString("hello richard"))
+}
+
+func TestGeneratesNames(t *testing.T) {
+	basicScript := `{
+  "version": "0.1",
+  "runs": [{
+    "arguments": [
+      "-l"
+    ],
+    "exitCode": 0,
+    "steps": [{
+      "line": "hello world"
+    }]
+  }]
+}`
+	script, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.NoError(t, err)
+	assert.Len(t, script.Runs, 1)
+	assert.Equal(t, "run 0", script.Runs[0].Name)
 }
 
 func TestValidationFailsForMissingProperties(t *testing.T) {

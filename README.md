@@ -88,17 +88,18 @@ automation script should finish as quickly as the cli can execute its work.
 Runs prescripted responses against an interactive cli
 
 ```bash
-prescript play [script file] [optional executable] [flags]
+prescript play [script file] [flags] -- [executable arguments]
 ```
 
 | Option | Description                                                               | Type   | Default | Required? |
 | ------ | ------------------------------------------------------------------------- | ------ | ------- | --------- |
 | `[script file]`         | the script to use that contains the automated steps      | `bool` |         | Yes       |
-| `[executable]`          | an executable to run the script against                  | `bool` |         | No        |
+| `-e`                    | override the executable named in the script file         | `string` |       | No        |
 | `-d`                    | dont fail on external command failures                   | `bool` | `false` | No        |
 | `-l`                    | log level to use with logs (e.g. none, debug, info)      | `enum` | `none`  | No        |
 | `-q`                    | no output                                                | `bool` | `false` | No        |
 | `-t`                    | timeout waiting for output from external command         | `bool` | `30s  ` | No        |
+| `-- [args]`             | arguments for the executable, overriding those in the script | `list` |     | No        |
 
 #### `record`
 
