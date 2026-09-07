@@ -34,8 +34,28 @@ func TestOnlyTheFirstDivergenceIsReported(t *testing.T) {
 
 	assert.Equal(t, []string{"ruby"}, report.Finding.Ports)
 	assert.Contains(t, report.Markdown(), "# ruby: no-match at step 1 of 2")
-	assert.NotContains(t, report.Markdown(), "python")
-	assert.NotContains(t, report.Markdown(), "step 2 of 2")
+
+	divergence := section(t, report.Markdown(), "## The divergence")
+	assert.Contains(t, divergence, "step 1 of 2")
+	assert.NotContains(t, divergence, "python")
+	assert.NotContains(t, divergence, "807")
+}
+
+// section is the body of one heading. Scoped, because the rest of the report
+// quotes whatever the machine happens to be -- an image digest is hex long
+// enough to contain any three digits, and the image manifest names every
+// language installed -- so a NotContains over the whole file asserts something
+// about this machine rather than about the report.
+func section(t *testing.T, markdown string, heading string) string {
+	t.Helper()
+
+	_, body, found := strings.Cut(markdown, heading)
+	require.True(t, found, heading)
+
+	if next := strings.Index(body, "\n## "); next >= 0 {
+		return body[:next]
+	}
+	return body
 }
 
 func TestBothSidesAndTheClassificationAreInTheReport(t *testing.T) {
