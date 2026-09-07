@@ -34,7 +34,8 @@ func TestOnlyTheFirstDivergenceIsReported(t *testing.T) {
 
 	assert.Equal(t, []string{"ruby"}, report.Finding.Ports)
 	assert.Contains(t, report.Markdown(), "# ruby: no-match at step 1 of 2")
-	assert.NotContains(t, report.Markdown(), "807")
+	assert.NotContains(t, report.Markdown(), "python")
+	assert.NotContains(t, report.Markdown(), "step 2 of 2")
 }
 
 func TestBothSidesAndTheClassificationAreInTheReport(t *testing.T) {
