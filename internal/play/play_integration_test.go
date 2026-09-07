@@ -261,3 +261,40 @@ func TestNoDeclaredEnvInheritsTheParentEnvironment(t *testing.T) {
 
 	assert.Equal(t, 0, exitCode)
 }
+
+// End to end through the real parser: a script whose expected line covers a
+// value that is different on every run, which is the case redactions exist for
+// and the case a literal line cannot express at all.
+func TestRedactionMatchesAVolatileValue(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/volatile.sh")
+	document := `{
+  "version": "0.4",
+  "redactions": {"pid": "[0-9]+"},
+  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "PROCESS {{pid}} STARTED"}]}]
+}`
+	parsed, err := script.ParseScriptFromBytes([]byte(document))
+	assert.NoError(t, err)
+
+	exitCode := Run(config.Play, parsed.Runs[0], config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}
+
+func TestRedactionStillFailsOnARealMismatch(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/volatile.sh")
+	document := `{
+  "version": "0.4",
+  "redactions": {"pid": "[0-9]+"},
+  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "THREAD {{pid}} STARTED"}]}]
+}`
+	parsed, err := script.ParseScriptFromBytes([]byte(document))
+	assert.NoError(t, err)
+
+	exitCode := Run(config.Play, parsed.Runs[0], config.Logger)
+
+	assert.NotEqual(t, 0, exitCode)
+}

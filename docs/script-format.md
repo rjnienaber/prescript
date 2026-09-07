@@ -70,6 +70,7 @@ but means nothing is worse than no version at all.
 | `0.1` | Initial format. |
 | `0.2` | Added `env` and `inheritEnv` to a run. |
 | `0.3` | A script may hold more than one run. |
+| `0.4` | Added `redactions`, superseding `isRegex`. |
 
 ### Known limitation
 
@@ -202,3 +203,58 @@ which is what a program reading from a terminal receives.
 
 YAML allows a mapping key of any type; JSON does not. A script that uses one is
 rejected, rather than reaching the schema as something it cannot describe.
+
+## Redactions
+
+A line that contains something different on every run cannot be matched
+literally. `redactions` names the patterns that stand in for those parts, and a
+step refers to one as `{{name}}`:
+
+```yaml
+version: "0.4"
+
+redactions:
+  elapsed: '[0-9]+'
+  path: '/[^ ]+'
+
+runs:
+  - executable: ./build.sh
+    arguments: []
+    exitCode: 0
+    steps:
+      - line: "wrote {{path}} in {{elapsed}}ms"
+```
+
+Everything outside a placeholder is matched literally — `(`, `.` and `?` in the
+expected output are those characters and not regular expression syntax — and the
+line is anchored at both ends, so a redacted line stands for the whole line the
+program printed, exactly as a literal one does.
+
+Redactions are declared once for the whole script rather than per run, so two
+runs being compared against each other normalise the same things in the same
+way. Normalising differently is how a comparison quietly stops comparing.
+
+### Why not just a regular expression
+
+`isRegex` swaps exact matching for a regular expression over the entire line. To
+mask one volatile number with it you have to write a pattern for everything
+around that number too:
+
+```yaml
+- line: '^wrote /[^ ]+ in [0-9]+ms$'
+  isRegex: true
+```
+
+which no longer reads as the output it stands for, and no longer says which part
+was expected to vary or why. The version with `{{elapsed}}` says both.
+
+`isRegex` still works. It is superseded, not removed: taking it away means every
+script using one has to be rewritten, which is a major version bump. Prefer
+redactions in anything written from now on.
+
+### Errors
+
+A placeholder naming a redaction the script does not declare is rejected, and
+the message lists the ones it does declare. A redaction whose pattern does not
+compile is reported once, against the declaration rather than against every step
+that refers to it. A step cannot be both `isRegex` and use redactions.

@@ -144,6 +144,16 @@ Write fixtures in YAML: it has comments, and the expected output is not buried
 in quoting. Quote every `line` and `input` — YAML strips trailing whitespace
 from an unquoted scalar, and prompts end in a space.
 
+A line that varies between runs is matched with a named redaction, so the
+expected line still reads as the output it stands for:
+
+```yaml
+redactions:
+  elapsed: '[0-9]+'
+steps:
+  - line: "finished in {{elapsed}}ms"
+```
+
 ### When a run fails
 
 `prescript` exits non-zero and writes a report to stderr saying which step went
