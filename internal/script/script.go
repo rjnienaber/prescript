@@ -24,6 +24,13 @@ func ParseScriptFromFile(filePath string) (Script, error) {
 }
 
 func ParseScriptFromBytes(json []byte) (Script, error) {
+	// Checked before the schema deliberately. A script from a newer prescript
+	// otherwise fails as a list of unrecognised fields, which states the same
+	// problem far less usefully than naming the version does.
+	if err := checkDeclaredVersion(json); err != nil {
+		return Script{}, err
+	}
+
 	schemaLoader := schema.NewBytesLoader(SchemaBytes)
 	documentLoader := schema.NewBytesLoader(json)
 	result, err := schema.Validate(schemaLoader, documentLoader)
@@ -51,6 +58,24 @@ func ParseScriptFromBytes(json []byte) (Script, error) {
 	return Script{}, err
 }
 
+// checkDeclaredVersion reads just enough of the document to find its version.
+// Anything that will not unmarshal, or that omits the version entirely, is left
+// to the schema, which describes shape problems better than this can.
+func checkDeclaredVersion(document []byte) error {
+	var declared struct {
+		Version string `json:"version"`
+	}
+
+	if err := json2.Unmarshal(document, &declared); err != nil || declared.Version == "" {
+		return nil
+	}
+
+	if err := checkVersion(declared.Version); err != nil {
+		return validationError(err.Error())
+	}
+	return nil
+}
+
 func BuildScriptJson(cfg config.RecordConfig, lines []utils.CapturedLine, exitCode int, now time.Time, logger utils.Logger) (string, error) {
 	var steps []Step
 	if cfg.DontCompress {
@@ -60,7 +85,7 @@ func BuildScriptJson(cfg config.RecordConfig, lines []utils.CapturedLine, exitCo
 	}
 
 	script := Script{
-		Version: "0.1",
+		Version: CurrentVersion,
 		Runs: []Run{
 			{
 				Timestamp:  now,

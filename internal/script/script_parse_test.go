@@ -109,18 +109,72 @@ version: Invalid type. Expected: string, given: integer`
 	assert.Equal(t, expected, err.Error())
 }
 
-func TestValidationFailsForIncorrectVersion(t *testing.T) {
+func TestValidationFailsForUnrecognisedVersion(t *testing.T) {
 	basicScript := `{
   "version": "0.0",
   "runs": []
+}`
+	_, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.Error(t, err)
+	// The version is reported on its own: the rest of the document was written
+	// against a format this build does not know, so complaining about its shape
+	// would be guesswork.
+	expected := `Script validation errors:
+version: unrecognised script format "0.0": expected one of "0.1"`
+	assert.Equal(t, expected, err.Error())
+}
+
+func TestValidationFailsForNewerVersion(t *testing.T) {
+	basicScript := `{
+  "version": "9.9",
+  "runs": [{
+    "arguments": [],
+    "exitCode": 0,
+    "steps": [{"line": "hello", "env": {"A": "B"}}]
   }]
 }`
 	_, err := ParseScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
+	// Naming the version says what to do about it; a list of unrecognised
+	// fields would not.
 	expected := `Script validation errors:
-runs: Array must have at least 1 items
-version: version must be one of the following: "0.1"`
+version: script is written for format 9.9, but this build of prescript reads up to 0.1; upgrade prescript`
 	assert.Equal(t, expected, err.Error())
+}
+
+func TestValidationFailsForMalformedVersion(t *testing.T) {
+	basicScript := `{
+  "version": "one",
+  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "hello"}]}]
+}`
+	_, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.Error(t, err)
+	expected := `Script validation errors:
+version: unrecognised script format "one": expected one of "0.1"`
+	assert.Equal(t, expected, err.Error())
+}
+
+func TestCurrentVersionIsAccepted(t *testing.T) {
+	basicScript := `{
+  "version": "` + CurrentVersion + `",
+  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "hello"}]}]
+}`
+	script, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.NoError(t, err)
+	assert.Equal(t, CurrentVersion, script.Version)
+}
+
+// Every version this build claims to read has to be one it can actually parse,
+// and has to be well formed, or the comparison in checkVersion is meaningless.
+func TestEveryKnownVersionIsReadable(t *testing.T) {
+	for _, known := range knownVersions {
+		assert.NoError(t, checkVersion(known), known)
+
+		major, minor, err := splitVersion(known)
+		assert.NoError(t, err, known)
+		assert.GreaterOrEqual(t, major, 0, known)
+		assert.GreaterOrEqual(t, minor, 0, known)
+	}
 }
 
 func TestHandlesInvalidRegex(t *testing.T) {

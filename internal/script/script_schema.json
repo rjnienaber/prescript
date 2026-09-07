@@ -7,8 +7,9 @@
   ],
   "properties": {
     "version": {
+      "description": "Script format version, MAJOR.MINOR. A minor increase is additive and older scripts keep working; a major increase means existing scripts must be rewritten. prescript rejects a version it does not recognise rather than ignoring what it cannot read. See docs/script-format.md.",
       "type": "string",
-      "enum": ["0.1"]
+      "pattern": "^[0-9]+\\.[0-9]+$"
     },
     "runs": {
       "type": "array",

@@ -117,6 +117,12 @@ prescript record [script file] [executable] [flags] -- [args]
 **N.B.** The `--` convention is used to stop processing arguments for `prescript`. Any arguments after
 this point are passed to the executable.
 
+### Script files
+
+Script files are JSON, validated against a schema, and declare a format
+version. See [docs/script-format.md](docs/script-format.md) for what that
+version means and how it changes.
+
 ### When a run fails
 
 `prescript` exits non-zero and writes a report to stderr saying which step went
