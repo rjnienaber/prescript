@@ -40,6 +40,17 @@
           "exitCode": {
             "type": "number"
           },
+          "env": {
+            "description": "Environment for the child process. Omit it and the child inherits prescript's environment. Declare it and the child gets exactly these variables and nothing else, unless inheritEnv is also set. Added in 0.2.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "inheritEnv": {
+            "description": "Put prescript's own environment underneath the declared env, rather than replacing it. Has no effect unless env is declared. Added in 0.2.",
+            "type": "boolean"
+          },
           "steps": {
             "type": "array",
             "items": {

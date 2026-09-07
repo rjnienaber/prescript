@@ -1,6 +1,7 @@
 package script
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -109,6 +110,12 @@ version: Invalid type. Expected: string, given: integer`
 	assert.Equal(t, expected, err.Error())
 }
 
+// The expected messages list every version this build reads, so bumping the
+// format does not mean rewriting the assertions.
+func knownVersionList() string {
+	return strings.Join(quoteAll(knownVersions), ", ")
+}
+
 func TestValidationFailsForUnrecognisedVersion(t *testing.T) {
 	basicScript := `{
   "version": "0.0",
@@ -120,7 +127,7 @@ func TestValidationFailsForUnrecognisedVersion(t *testing.T) {
 	// against a format this build does not know, so complaining about its shape
 	// would be guesswork.
 	expected := `Script validation errors:
-version: unrecognised script format "0.0": expected one of "0.1"`
+version: unrecognised script format "0.0": expected one of ` + knownVersionList()
 	assert.Equal(t, expected, err.Error())
 }
 
@@ -138,7 +145,7 @@ func TestValidationFailsForNewerVersion(t *testing.T) {
 	// Naming the version says what to do about it; a list of unrecognised
 	// fields would not.
 	expected := `Script validation errors:
-version: script is written for format 9.9, but this build of prescript reads up to 0.1; upgrade prescript`
+version: script is written for format 9.9, but this build of prescript reads up to ` + CurrentVersion + `; upgrade prescript`
 	assert.Equal(t, expected, err.Error())
 }
 
@@ -150,7 +157,7 @@ func TestValidationFailsForMalformedVersion(t *testing.T) {
 	_, err := ParseScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 	expected := `Script validation errors:
-version: unrecognised script format "one": expected one of "0.1"`
+version: unrecognised script format "one": expected one of ` + knownVersionList()
 	assert.Equal(t, expected, err.Error())
 }
 
@@ -196,4 +203,51 @@ func TestHandlesInvalidRegex(t *testing.T) {
 	expected := `Script validation errors:
 runs.0.steps.0.line: error parsing regexp: missing closing ): ` + "`hello (w+`"
 	assert.Equal(t, expected, err.Error())
+}
+
+func TestParsesEnv(t *testing.T) {
+	basicScript := `{
+  "version": "0.2",
+  "runs": [{
+    "arguments": [],
+    "exitCode": 0,
+    "env": {"VINTBAS_SEED": "0", "TZ": "UTC"},
+    "inheritEnv": true,
+    "steps": [{"line": "hello"}]
+  }]
+}`
+	script, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.NoError(t, err)
+
+	run := script.Runs[0]
+	assert.Equal(t, map[string]string{"VINTBAS_SEED": "0", "TZ": "UTC"}, run.Env)
+	assert.True(t, run.InheritEnv)
+}
+
+func TestValidationFailsForNonStringEnvValue(t *testing.T) {
+	basicScript := `{
+  "version": "0.2",
+  "runs": [{
+    "arguments": [],
+    "exitCode": 0,
+    "env": {"VINTBAS_SEED": 0},
+    "steps": [{"line": "hello"}]
+  }]
+}`
+	_, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.Error(t, err)
+	expected := `Script validation errors:
+runs.0.env.VINTBAS_SEED: Invalid type. Expected: string, given: integer`
+	assert.Equal(t, expected, err.Error())
+}
+
+// A 0.1 script predates env, and has to keep meaning what it meant: inherit.
+func TestOlderScriptsStillParse(t *testing.T) {
+	basicScript := `{
+  "version": "0.1",
+  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "hello"}]}]
+}`
+	script, err := ParseScriptFromBytes([]byte(basicScript))
+	assert.NoError(t, err)
+	assert.Nil(t, script.Runs[0].Environment([]string{"HOME=/home/richard"}))
 }

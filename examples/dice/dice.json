@@ -1,8 +1,9 @@
 {
-  "version": "0.1",
+  "version": "0.2",
   "runs": [{
     "executable": "vintbas",
     "arguments": ["examples/dice/dice.bas"],
+    "env": { "VINTBAS_SEED": "0" },
     "exitCode": 0,
     "steps": [{
       "line": "HOW MANY ROLLS? ",

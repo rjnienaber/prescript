@@ -208,3 +208,56 @@ func TestFailIfExecutableTimesOutAfterSteps(t *testing.T) {
 
 	assert.Equal(t, 1, exitCode)
 }
+
+// The three tests below are not parallel: t.Setenv cannot be used in a parallel
+// test, and the point of each is what the child sees of prescript's own
+// environment.
+
+func TestDeclaredEnvReplacesTheParentEnvironment(t *testing.T) {
+	t.Setenv("PRESCRIPT_TEST_PARENT", "visible")
+
+	config := createConfig(t, "fixtures/env.sh")
+	run := script.Run{
+		Env: map[string]string{"GREETING": "hello"},
+		Steps: []script.Step{
+			{Line: "GREETING=hello"},
+			{Line: "PARENT=unset"},
+		},
+	}
+
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}
+
+func TestInheritEnvKeepsTheParentEnvironment(t *testing.T) {
+	t.Setenv("PRESCRIPT_TEST_PARENT", "visible")
+
+	config := createConfig(t, "fixtures/env.sh")
+	run := script.Run{
+		Env:        map[string]string{"GREETING": "hello"},
+		InheritEnv: true,
+		Steps: []script.Step{
+			{Line: "GREETING=hello"},
+			{Line: "PARENT=visible"},
+		},
+	}
+
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}
+
+func TestNoDeclaredEnvInheritsTheParentEnvironment(t *testing.T) {
+	t.Setenv("PRESCRIPT_TEST_PARENT", "visible")
+
+	config := createConfig(t, "fixtures/env.sh")
+	run := script.Run{Steps: []script.Step{
+		{Line: "GREETING=unset"},
+		{Line: "PARENT=visible"},
+	}}
+
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}

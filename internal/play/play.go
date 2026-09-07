@@ -50,7 +50,7 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 		return utils.USER_ERROR
 	}
 
-	executable, err := utils.StartExecutable(executablePath, getArguments(config, run), logger)
+	executable, err := utils.StartExecutable(executablePath, getArguments(config, run), run.Environment(os.Environ()), logger)
 	if err != nil {
 		return utils.INTERNAL_ERROR
 	}
