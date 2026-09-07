@@ -337,3 +337,40 @@ func TestTheDrawCountSurvivesARunThatIsKilled(t *testing.T) {
 		})
 	}
 }
+
+// The report end to end, against a language that is actually installed: the
+// facts a unit test has to stub -- what the interpreter says it is, how much
+// of the tape the run drew, what the tape says about where it came from -- are
+// exactly the ones that make a report answerable, so at least once they are
+// gathered from a real run rather than described.
+func TestABugReportGathersTheFactsFromARealRun(t *testing.T) {
+	t.Parallel()
+	runner := loadRunner(t, "ruby.yaml")
+
+	// The reference's own draws, minus one, so the run diverges on the last
+	// line having drawn the whole tape's worth first.
+	wrong := strings.Replace(referenceDraws, "973", "972", 1)
+	runs := script.ApplyRunner([]script.Run{drawingRun(t, "rng.rb", wrong)}, runner)
+
+	config := tapedConfig(t)
+	config.ScriptFile = "rng.yaml"
+	config.BugReport = filepath.Join(t.TempDir(), "report.md")
+
+	outcome := Run(config, runs[0], &utils.CustomLogger{})
+	assert.NotEqual(t, 0, outcome.ExitCode)
+
+	written, err := WriteBugReport(config, runs, []Outcome{outcome},
+		[]string{"/somewhere/prescript", "play", "rng.yaml", "--tape", tapePath(t)})
+	assert.NoError(t, err)
+	assert.True(t, written)
+
+	contents, err := os.ReadFile(config.BugReport)
+	assert.NoError(t, err)
+	report := string(contents)
+
+	assert.Contains(t, report, "| ruby | `ruby ")
+	assert.Contains(t, report, "| draws | `5` |")
+	assert.Contains(t, report, "# source: vintage-basic")
+	assert.Contains(t, report, "prescript play rng.yaml --tape "+tapePath(t))
+	assert.Contains(t, report, referenceDraws)
+}

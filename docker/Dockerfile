@@ -89,7 +89,8 @@ ENV LANG=C.UTF-8 \
 
 # What a bug report has to carry, written from the binaries that were actually
 # installed rather than from the arguments above, so it cannot claim a version
-# the image does not have. Issue #18 reads this file; a human can cat it.
+# the image does not have. `prescript play --bug-report` quotes it verbatim; a
+# human can cat it.
 ENV PRESCRIPT_ENVIRONMENT=/etc/prescript-environment
 RUN { \
       echo "base=debian:bookworm-slim@${BASE_DIGEST}"; \
@@ -105,6 +106,14 @@ RUN { \
 
 COPY entrypoint.sh /usr/local/bin/prescript-entrypoint
 RUN chmod +x /usr/local/bin/prescript-entrypoint
+
+# The repository is mounted from the host, so its files belong to a user this
+# container does not have, and git refuses to read a repository it considers
+# somebody else's. `go build` asks git for the revision it stamps into the
+# binary and treats that refusal as an error rather than as "no VCS here", so
+# without this every build inside the image fails. Scoped to the one directory
+# that is ever mounted.
+RUN git config --system --add safe.directory /workspace
 
 WORKDIR /workspace
 ENTRYPOINT ["/usr/local/bin/prescript-entrypoint"]
