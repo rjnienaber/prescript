@@ -42,6 +42,10 @@ type Executable struct {
 	pty     io.Closer
 	command *exec.Cmd
 	logger  Logger
+
+	// reaped records that the child has already been waited for, because
+	// waiting twice is an error and Terminate does it on the way out.
+	reaped bool
 }
 
 // ExecutableOptions is everything StartExecutable needs to know about how to
@@ -153,14 +157,60 @@ func environmentNames(env []string) []string {
 }
 
 func (executable *Executable) WaitForExit() (int, error) {
-	err := executable.command.Wait()
-
-	if executable.pty != nil {
-		if closeErr := executable.pty.Close(); closeErr != nil {
-			executable.logger.Debug("error closing pty: ", closeErr)
-		}
+	if executable.reaped {
+		return executable.command.ProcessState.ExitCode(), nil
 	}
+
+	err := executable.command.Wait()
+	executable.reaped = true
+	executable.closePty()
 
 	exitCode := executable.command.ProcessState.ExitCode()
 	return exitCode, err
+}
+
+// Terminate kills a program that is not going to finish on its own, and waits
+// for it. A run that gives up on a program has to take it with it: a corpus of
+// a few hundred scripts that leaks one process per timeout eventually cannot
+// start anything at all, and the leaked ones are usually still holding the
+// terminal they were given.
+func (executable *Executable) Terminate() {
+	process := executable.command.Process
+	if process == nil || executable.reaped {
+		return
+	}
+
+	// Under a pty the child is a session leader, so whatever it started is in
+	// its process group and one signal takes the lot — an interpreter that
+	// spawned the program being tested is the ordinary case. Under pipes it
+	// shares prescript's own group, where a group signal would kill prescript.
+	if executable.pty != nil {
+		if err := killGroup(process.Pid); err != nil {
+			executable.logger.Debug("could not kill the process group: ", err)
+		}
+	}
+
+	if err := process.Kill(); err != nil {
+		executable.logger.Debug("could not kill the process: ", err)
+	}
+
+	if err := executable.command.Wait(); err != nil {
+		executable.logger.Debug("process did not exit cleanly after being killed: ", err)
+	}
+	executable.reaped = true
+
+	// Last, so that anything still blocked reading the pty is released only
+	// once there is nothing left to read.
+	executable.closePty()
+}
+
+func (executable *Executable) closePty() {
+	if executable.pty == nil {
+		return
+	}
+
+	if err := executable.pty.Close(); err != nil {
+		executable.logger.Debug("error closing pty: ", err)
+	}
+	executable.pty = nil
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/rjnienaber/prescript/internal/script"
@@ -37,6 +38,25 @@ func NewStepMatcher(stdin io.WriteCloser, steps []script.Step, quiet bool, logge
 
 func (matcher *StepMatcher) MissingSteps() bool {
 	return matcher.currentStepIndex < len(matcher.steps)
+}
+
+// Timeout is how long to wait for the next character to arrive. A step that
+// knows it is slow — a program that computes for a minute before printing its
+// next prompt — says so for itself, so the rest of the script does not have to
+// be given the slowest step's patience as well.
+//
+// The wait is per character rather than per step, which is what the run-wide
+// timeout has always meant: it bounds how long the program may go on saying
+// nothing, not how long the step may take in total.
+func (matcher *StepMatcher) Timeout(runTimeout time.Duration) time.Duration {
+	if !matcher.MissingSteps() {
+		return runTimeout
+	}
+
+	if step := matcher.steps[matcher.currentStepIndex]; step.TimeoutDuration > 0 {
+		return step.TimeoutDuration
+	}
+	return runTimeout
 }
 
 func (matcher *StepMatcher) ResetLine() {
@@ -76,23 +96,30 @@ func (matcher *StepMatcher) receivedLine() string {
 }
 
 // FailureReport explains why a run stopped short, in a form meant to be read
-// by a person or pasted into a bug report. reason says what ended the run, for
-// example "timed out after 30s".
+// by a person or pasted into a bug report. mode names which of the ways it
+// went wrong, and detail says what was observed, for example "the executable
+// exited with 1".
+//
+// Everything in a report is either a fixed string, something the script says,
+// or something the program printed. Nothing is measured: a timeout reports the
+// limit it was given and not how long it actually waited, so two runs of the
+// same divergence produce the same bytes and a real change stands out from a
+// slow machine.
 //
 // Lines are quoted because trailing whitespace is load-bearing: prompts
 // routinely end in a space, and an unquoted report makes a step that differs
 // only in that respect look identical to the one it failed to match.
-func (matcher *StepMatcher) FailureReport(reason string) string {
+func (matcher *StepMatcher) FailureReport(mode FailureMode, detail string) string {
 	if !matcher.MissingSteps() {
-		return fmt.Sprintf("all %d steps matched, but the run failed: %s", len(matcher.steps), reason)
+		return fmt.Sprintf("%s: all %d steps matched, but %s", mode, len(matcher.steps), detail)
 	}
 
 	step := matcher.steps[matcher.currentStepIndex]
 	expected, received := matcher.NextExpectedLine(), matcher.receivedLine()
 
 	var report strings.Builder
-	fmt.Fprintf(&report, "step %d of %d did not match (%s)\n\n",
-		matcher.currentStepIndex+1, len(matcher.steps), reason)
+	fmt.Fprintf(&report, "%s: step %d of %d did not match (%s)\n\n",
+		mode, matcher.currentStepIndex+1, len(matcher.steps), detail)
 	switch {
 	case step.Redacted:
 		fmt.Fprintf(&report, "  expected  %q  (with redactions applied)\n", expected)

@@ -15,6 +15,15 @@ type Step struct {
 	// and so matches by pattern rather than by equality. It is not part of the
 	// file format: the placeholders in Line are.
 	Redacted bool `json:"-"`
+
+	// Timeout replaces the run's timeout while this step is the one being
+	// waited for, written as a Go duration such as "2m". It is for the step
+	// that is known to be slow, so the rest of the script does not have to
+	// wait as long as its slowest moment. Added in 0.7.
+	Timeout string `json:"timeout,omitempty"`
+
+	// TimeoutDuration is Timeout parsed, and zero when it was not given.
+	TimeoutDuration time.Duration `json:"-"`
 }
 
 // UsesPattern reports whether the step matches by regular expression rather

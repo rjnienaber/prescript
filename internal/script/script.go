@@ -95,6 +95,7 @@ func ParseScriptFromBytes(json []byte) (Script, error) {
 
 		regexErrors = validateRegexes(script.Runs)
 		regexErrors = append(regexErrors, compileRedactions(script)...)
+		regexErrors = append(regexErrors, validateTimeouts(script.Runs)...)
 		regexErrors = append(regexErrors, ensureNames(script.Runs)...)
 		if len(regexErrors) == 0 {
 			return script, err

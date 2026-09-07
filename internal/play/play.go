@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
+	"os/exec"
+	"time"
 
 	cfg "github.com/rjnienaber/prescript/internal/config"
 	"github.com/rjnienaber/prescript/internal/script"
@@ -92,15 +93,10 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 	matcher := NewStepMatcher(executable.Stdin, run.Steps, config.Quiet, logger)
 
 	for {
-		tokenResult := processor.NextToken(config.Timeout)
+		timeout := matcher.Timeout(config.Timeout)
+		tokenResult := processor.NextToken(timeout)
 		if tokenResult.Error != nil {
-			if strings.Contains(tokenResult.Error.Error(), "timed out waiting") {
-				reportFailure(matcher.FailureReport(fmt.Sprintf("timed out after %s", config.Timeout)))
-			} else {
-				reportFailure(fmt.Sprintf("errored waiting for output from the executable: %s", tokenResult.Error))
-			}
-
-			return utils.CLI_ERROR
+			return reportInterrupted(&executable, &matcher, timeout, tokenResult.Error)
 		}
 
 		if tokenResult.Finished {
@@ -125,22 +121,56 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 
 	exitCode, err := executable.WaitForExit()
 	if matcher.MissingSteps() {
-		reportFailure(matcher.FailureReport(fmt.Sprintf("the executable exited with %d before this step was reached", exitCode)))
+		reportFailure(matcher.FailureReport(ExitedEarly, fmt.Sprintf("the executable exited with %d", exitCode)))
 		return utils.CLI_ERROR
 	}
 
-	if run.ExitCode == 0 && err != nil {
+	// A non-zero exit arrives as an ExitError, and that is the program's answer
+	// rather than a fault: the script says which code it expects, and the
+	// comparison below is what decides. Anything else from Wait means the run
+	// could not be completed at all.
+	var exitError *exec.ExitError
+	if err != nil && !errors.As(err, &exitError) {
 		logger.Error("error waiting for process to finish: ", err)
 		return utils.INTERNAL_ERROR
 	}
 
 	// we rely on exit code in the script to know whether to fail on errors
 	if exitCode != run.ExitCode {
-		msg := fmt.Sprintf("every step matched, but the executable exited with %d and the script expects %d", exitCode, run.ExitCode)
+		msg := matcher.FailureReport(WrongExitCode,
+			fmt.Sprintf("the executable exited with %d and the script expects %d", exitCode, run.ExitCode))
 		logger.Info(msg)
 		reportFailure(msg)
 		return utils.INTERNAL_ERROR
 	}
 
 	return utils.SUCCESS
+}
+
+// reportInterrupted deals with a run that stopped while the program was still
+// running, which is either a timeout or a read that failed outright.
+//
+// The program is killed first, before anything is written. Whatever it was
+// doing, it is not going to be asked for anything else, and a run that walks
+// away from it leaves it holding a terminal and, in a corpus run, one more
+// process than the last time.
+//
+// Which timeout it is matters as much as that there was one. A program that is
+// still printing something the script does not expect is a divergence to look
+// at; a program that matched every step and then would not exit is waiting for
+// something nobody is going to send. Those are different bugs and they are
+// named differently.
+func reportInterrupted(executable *utils.Executable, matcher *StepMatcher, timeout time.Duration, err error) int {
+	executable.Terminate()
+
+	switch {
+	case !errors.Is(err, ErrTimeout):
+		reportFailure(matcher.FailureReport(ReadFailed, fmt.Sprintf("could not read from the executable: %s", err)))
+	case matcher.MissingSteps():
+		reportFailure(matcher.FailureReport(NoMatch, fmt.Sprintf("nothing matched it within %s", timeout)))
+	default:
+		reportFailure(matcher.FailureReport(Hung, fmt.Sprintf("the executable had not exited after %s", timeout)))
+	}
+
+	return utils.CLI_ERROR
 }

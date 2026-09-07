@@ -73,6 +73,7 @@ but means nothing is worse than no version at all.
 | `0.4` | Added `redactions`, superseding `isRegex`. |
 | `0.5` | Added runner files. |
 | `0.6` | Added `terminal`, and made a pty the default. |
+| `0.7` | Added a per-step `timeout`. |
 
 ### Known limitation
 
@@ -239,6 +240,82 @@ the unnamed run at index 1.
 when the runs differ in their steps and a mistake when they differ in their
 executable, and prescript cannot tell which was meant, so it warns rather than
 refusing.
+
+## Timeouts
+
+`--timeout` bounds how long the program may go on saying nothing — it is a
+limit on the wait for the next character, not on how long a step may take in
+total. It defaults to 30 seconds.
+
+One slow moment should not set that limit for the whole script, so a step can
+name its own:
+
+```yaml
+version: "0.7"
+runs:
+  - executable: ./primes
+    arguments: ["1000000"]
+    exitCode: 0
+    steps:
+      - line: "How many? "
+        input: "1000000"
+      - line: "Done."
+        timeout: "5m"
+```
+
+A step's `timeout` replaces the run's while that step is the one being waited
+for, and is written as a Go duration — `"500ms"`, `"90s"`, `"5m"`. It always
+wins, including over `--timeout`: a step that says it is slow is a more
+specific statement than a flag applied to everything.
+
+A duration that does not parse, or one that is not positive, is a validation
+error reported with the regexes, before the run starts. A corpus run should
+find out that a script cannot be played before it has spent twenty minutes
+getting to the step that cannot play.
+
+## Failure modes
+
+A failed run names what went wrong before it says anything else:
+
+```
+no-match: step 3 of 12 did not match (nothing matched it within 30s)
+
+  expected  "HOW MANY ROLLS? "
+  received  "HOW MANY ROLES? "
+                        ^ first difference
+```
+
+| Mode | What happened | Where to look |
+| --- | --- | --- |
+| `no-match` | the program is still running, and printing something the step does not expect | the implementation's output |
+| `exited-early` | the program finished with steps still outstanding | a crash, a rejected argument, or a script that outlasts the program |
+| `hung` | every step matched and the program never exited | input the script does not go on to supply |
+| `wrong-exit-code` | it printed everything expected of it and disagreed only about how it finished | the program's ending, not its output |
+| `read-failed` | prescript could not read from the program | prescript or the machine, not the program |
+
+Those are different bugs with different places to go looking. Naming them in
+the same words every time is what makes a few hundred failing scripts something
+that can be sorted and counted rather than something that has to be read one by
+one.
+
+### Nothing in a report is measured
+
+A report contains fixed strings, what the script says, and what the program
+printed — never how long something actually took. A timeout reports the limit
+it was given, not the time it waited. Two runs of the same divergence therefore
+produce the same bytes, and a report that changes between runs means the
+program's behaviour changed, not that the machine was busier.
+
+### A run that times out takes the program with it
+
+Whichever way a timeout is reported, the program is killed before the report is
+written, along with anything it started: under a pty it is a session leader, so
+one signal reaches the interpreter and the program it launched. The alternative
+is one abandoned process per timeout, which a corpus run cannot afford.
+
+Under `terminal: pipes` the program shares prescript's own process group, so
+only the program itself is signalled — a group signal there would take
+prescript with it — and a child it started of its own may outlive it.
 
 ## File formats
 

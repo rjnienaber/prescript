@@ -15,3 +15,9 @@ import (
 func startPty(cmd *exec.Cmd) (*os.File, error) {
 	return nil, errors.New("a pty is not supported on this platform; run with --terminal pipes")
 }
+
+// killGroup has nothing to sign off on where there is no pty to have made a
+// process group in the first place.
+func killGroup(pid int) error {
+	return errors.New("killing a process group is not supported on this platform")
+}

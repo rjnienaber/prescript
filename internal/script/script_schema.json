@@ -77,6 +77,10 @@
                 "input": {
                   "type": "string"
                 },
+                "timeout": {
+                  "description": "How long to wait for output while this step is the one being waited for, as a Go duration such as '2m'. Replaces the run's timeout for this step only. Added in 0.7.",
+                  "type": "string"
+                },
                 "isRegex": {
                   "description": "Match the whole line as a regular expression. Superseded by redactions, which keep the line readable as the output it stands for; see docs/script-format.md.",
                   "type": "boolean"

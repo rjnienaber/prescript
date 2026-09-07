@@ -356,3 +356,46 @@ func TestTerminalDefaultsToEmpty(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "", script.Runs[0].Terminal)
 }
+
+func TestStepTimeoutIsParsed(t *testing.T) {
+	document := `{
+  "version": "0.7",
+  "runs": [{"arguments": [], "exitCode": 0, "steps": [
+    {"line": "computing... ", "timeout": "2m"},
+    {"line": "done"}
+  ]}]
+}`
+	script, err := ParseScriptFromBytes([]byte(document))
+	assert.NoError(t, err)
+	assert.Equal(t, 2*time.Minute, script.Runs[0].Steps[0].TimeoutDuration)
+	// A step that says nothing waits as long as the run does, which play
+	// resolves; there is nothing to record here.
+	assert.Equal(t, time.Duration(0), script.Runs[0].Steps[1].TimeoutDuration)
+}
+
+// Reported with the regexes and for the same reason: a script that cannot be
+// run is worth knowing about before a corpus run has spent twenty minutes
+// reaching the step that cannot run.
+func TestUnparseableStepTimeoutIsRejected(t *testing.T) {
+	document := `{
+  "version": "0.7",
+  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "hi", "timeout": "soon"}]}]
+}`
+	_, err := ParseScriptFromBytes([]byte(document))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "runs.0.steps.0.timeout: ")
+	assert.Contains(t, err.Error(), `"soon"`)
+}
+
+// A timeout of zero would mean "wait no time at all", which no one means.
+func TestNonPositiveStepTimeoutIsRejected(t *testing.T) {
+	document := `{
+  "version": "0.7",
+  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "hi", "timeout": "0s"}]}]
+}`
+	_, err := ParseScriptFromBytes([]byte(document))
+	assert.Error(t, err)
+	expected := `Script validation errors:
+runs.0.steps.0.timeout: "0s" is not a positive duration`
+	assert.Equal(t, expected, err.Error())
+}

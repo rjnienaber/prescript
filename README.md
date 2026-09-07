@@ -185,13 +185,26 @@ One runner per language and one script per program means a hundred programs in
 a dozen languages is a hundred-odd files rather than twelve hundred. See
 [docs/script-format.md](docs/script-format.md#runners).
 
+### Timeouts
+
+`--timeout` bounds how long the program may go on saying nothing, and defaults
+to 30 seconds. A step that is known to be slow names its own instead, so one
+slow moment does not set the limit for the whole script:
+
+```yaml
+- line: "Done."
+  timeout: "5m"
+```
+
 ### When a run fails
 
-`prescript` exits non-zero and writes a report to stderr saying which step went
-wrong and what arrived instead:
+`prescript` exits non-zero and writes a report to stderr. It leads with which
+of the ways it went wrong — `no-match`, `exited-early`, `hung`,
+`wrong-exit-code` or `read-failed` — and then says which step went wrong and
+what arrived instead:
 
 ```
-step 1 of 2 did not match (timed out after 5s)
+no-match: step 1 of 2 did not match (nothing matched it within 5s)
 
   expected  "HOW MANY ROLES? "
   received  "HOW MANY ROLLS? "
@@ -209,7 +222,12 @@ end in a space, and an unquoted report makes a step that differs only in that
 respect look identical to the one it failed to match.
 
 The report goes to stderr, so `--quiet` still silences the program's own output
-without hiding the diagnosis, and it does not depend on `--log-level`.
+without hiding the diagnosis, and it does not depend on `--log-level`. Nothing
+in it is measured, so the same divergence reports the same bytes every time;
+see [docs/script-format.md](docs/script-format.md#failure-modes).
+
+A run that times out kills the program before writing its report, and under a
+pty takes anything the program started with it.
 
 ### Development
 
