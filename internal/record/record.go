@@ -55,9 +55,19 @@ func captureIO(outputChannel chan utils.CapturedToken, inputChannel chan utils.C
 }
 
 func runRecord(config cfg.RecordConfig, logger utils.Logger) (string, int) {
+	terminal, err := utils.ParseTerminal(config.Terminal)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return "", utils.USER_ERROR
+	}
+
 	// nil env: recording watches the program in the environment the user ran it
 	// in, and that environment is not something record can know to write down.
-	executable, err := utils.StartExecutable(config.ExecutablePath, config.Arguments, nil, logger)
+	executable, err := utils.StartExecutable(utils.ExecutableOptions{
+		Path:      config.ExecutablePath,
+		Arguments: config.Arguments,
+		Terminal:  terminal,
+	}, logger)
 	if err != nil {
 		return "", utils.INTERNAL_ERROR
 	}

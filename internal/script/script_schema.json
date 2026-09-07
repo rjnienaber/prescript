@@ -54,6 +54,11 @@
               "type": "string"
             }
           },
+          "terminal": {
+            "description": "What the program finds on its standard streams. 'pty' (the default) gives it a pseudo-terminal, which is what an interactive program is normally run under; 'pipes' does not. Added in 0.6.",
+            "type": "string",
+            "enum": ["pty", "pipes"]
+          },
           "inheritEnv": {
             "description": "Put prescript's own environment underneath the declared env, rather than replacing it. Has no effect unless env is declared. Added in 0.2.",
             "type": "boolean"

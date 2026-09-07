@@ -119,3 +119,15 @@ func TestApplyRunnerLeavesTheOriginalRunsAlone(t *testing.T) {
 	assert.Equal(t, "vintbas", runs[0].Executable)
 	assert.Equal(t, map[string]string{"SEED": "0"}, runs[0].Env)
 }
+
+func TestApplyRunnerSuppliesTheTerminal(t *testing.T) {
+	run := runnerFor(t, []Run{{}}, Runner{Terminal: "pipes"})
+	assert.Equal(t, "pipes", run.Terminal)
+}
+
+// As with env, the script is the more specific description: it is about this
+// one program, while the runner is about every program written in a language.
+func TestScriptTerminalWinsOverRunnerTerminal(t *testing.T) {
+	run := runnerFor(t, []Run{{Terminal: "pty"}}, Runner{Terminal: "pipes"})
+	assert.Equal(t, "pty", run.Terminal)
+}

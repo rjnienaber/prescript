@@ -140,6 +140,11 @@ func BuildScriptJson(cfg config.RecordConfig, lines []utils.CapturedLine, exitCo
 				Arguments:  cfg.Arguments,
 				ExitCode:   exitCode,
 				Steps:      steps,
+
+				// Only when it is not the default. A recording made through
+				// pipes has to say so, or replaying it would give the program
+				// a terminal it was never recorded against.
+				Terminal: pipesOnly(cfg.Terminal),
 			},
 		},
 	}
@@ -151,6 +156,15 @@ func BuildScriptJson(cfg config.RecordConfig, lines []utils.CapturedLine, exitCo
 	}
 
 	return string(scriptBytes), nil
+}
+
+// pipesOnly keeps "pipes" and drops everything else, so an omitted or
+// explicit "pty" both come out as the default rather than as noise in the file.
+func pipesOnly(terminal string) string {
+	if terminal == string(utils.TerminalPipes) {
+		return terminal
+	}
+	return ""
 }
 
 func compressCaputuredLines(lines []utils.CapturedLine) []Step {

@@ -72,6 +72,7 @@ but means nothing is worse than no version at all.
 | `0.3` | A script may hold more than one run. |
 | `0.4` | Added `redactions`, superseding `isRegex`. |
 | `0.5` | Added runner files. |
+| `0.6` | Added `terminal`, and made a pty the default. |
 
 ### Known limitation
 
@@ -132,6 +133,76 @@ per-platform default is the machine-dependence this feature exists to remove.
 Resolving the executable named by the script is unaffected either way: prescript
 looks it up on *its own* `PATH` before starting the child, so a script naming
 `vintbas` finds the same binary whether or not the run declares an environment.
+
+## Terminal
+
+A program is started under a pseudo-terminal by default, which is what an
+interactive program is normally run under and what it asks about before
+deciding how to behave:
+
+```yaml
+version: "0.6"
+runs:
+  - executable: ./menu.py
+    arguments: []
+    exitCode: 0
+    terminal: pipes   # the exception, not the rule
+    steps: [ ... ]
+```
+
+| `terminal` | the program's standard streams are |
+| --- | --- |
+| omitted, or `pty` | a pseudo-terminal |
+| `pipes` | ordinary pipes |
+
+`--terminal pty` and `--terminal pipes` override whatever the file said, which
+is how a script is tried the other way round without editing it.
+
+### Why a pty is the default
+
+The question a program actually asks is `isatty()`, and it asks it to decide
+how to buffer its output. Under a terminal, C and Python line-buffer: a prompt
+reaches prescript the moment it is written. Under a pipe they switch to a 4KB
+block buffer, and a prompt with no trailing newline can sit in that buffer
+until the program either fills it or exits — which it will not do, because it
+is waiting for the answer to the prompt it has not yet delivered. The result is
+a timeout against a program that is working perfectly.
+
+Buffering is only the most common of the things a program decides this way.
+Colour, progress bars, pagination and "are you sure?" prompts are all commonly
+switched off when the output is not a terminal, so a fixture recorded through a
+pipe describes a program in a mode nobody runs it in.
+
+### What prescript does to the pty
+
+The pty is put into raw mode before the program starts. Two of the flags that
+clears are the ones that would otherwise show up in a script:
+
+- **echo**, which would send every character prescript types back down the same
+  stream it is matching against, so a step would have to expect its own input.
+- **newline translation**, which would turn each `\n` the program writes into
+  `\r\n`, so every expected line would have to end in a carriage return.
+
+What is left is a stream of bytes identical to what a pipe would have
+delivered, from a program that can nonetheless see it is talking to a terminal.
+A script recorded under one and played under the other generally matches, which
+is the point: the pty changes what the program decides, not what prescript
+reads.
+
+As a backstop, a `\r\n` written by the program itself is read as `\n`. A
+carriage return that is *not* followed by a newline is left alone, because it
+means "back to the start of the line" and a program that writes one meant it.
+
+### When to ask for pipes
+
+`terminal: pipes` is for the case where the pipe is the thing being tested — a
+program whose non-interactive mode is the subject of the script, or one that
+misbehaves under a terminal in a way worth pinning down. It is also the answer
+on a platform with no pty to offer.
+
+A recording made with `--terminal pipes` writes `terminal: pipes` into the
+script, so replaying it does not quietly hand the program a terminal it was
+never recorded against.
 
 ## Multiple runs
 
@@ -281,7 +352,7 @@ twelve hundred.
 
 ```yaml
 # runners/ruby.yaml
-version: "0.5"
+version: "0.6"
 executable: ruby
 arguments: ["-W0"]
 env:
@@ -300,6 +371,7 @@ defaults to the file's own name.
 | `arguments` | the runner's first, then the script's (or the command line's) |
 | `env` | merged; the script wins where both name the same variable |
 | `inheritEnv` | set if either sets it |
+| `terminal` | the script's, falling back to the runner's |
 
 The argument order is the point: the runner's arguments are the interpreter's
 own flags, and everything after them names the program to feed it. That is also

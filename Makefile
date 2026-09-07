@@ -56,6 +56,10 @@ test:
 examples:
 	./tmp/prescript play examples/dice/dice.json
 	./tmp/prescript play examples/dice/dice.yaml --runner examples/dice/runners/vintbas.yaml
+# The same script through pipes. A pty is the default and what the two runs
+# above use; this one is here so both paths stay exercised, and so a program
+# whose output differs between them is noticed here rather than in a fixture.
+	./tmp/prescript play examples/dice/dice.json --terminal pipes
 
 .PHONY: prepush
 prepush: format lint test build_dev examples

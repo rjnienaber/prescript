@@ -33,6 +33,11 @@
         "type": "string"
       }
     },
+    "terminal": {
+      "description": "What the program finds on its standard streams. 'pty' (the default) gives it a pseudo-terminal, which is what an interactive program is normally run under; 'pipes' does not. Added in 0.6. Set here when a language's programs need one or the other; a script that names its own wins.",
+      "type": "string",
+      "enum": ["pty", "pipes"]
+    },
     "inheritEnv": {
       "description": "Put prescript's own environment underneath the declared env. Set by either the runner or the script.",
       "type": "boolean"
