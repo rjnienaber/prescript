@@ -1,0 +1,95 @@
+name: vintbas
+
+# Builds the reference BASIC interpreter that `make examples` runs against.
+#
+# The binary used to come from a personal fork of vintage-basic, which was
+# deleted, taking the only copy with it (#20). It is now built here from the
+# Hackage release plus the patches in patches/, and published as a release
+# asset on this repository so it cannot disappear again.
+#
+# Pull requests build the binaries to prove the patches still apply and
+# compile. Pushing a `vintbas-*` tag additionally publishes them.
+
+on:
+  pull_request:
+    paths:
+      - 'patches/**'
+      - 'scripts/build-vintbas.sh'
+      - '.github/workflows/vintbas.yaml'
+  push:
+    tags: ['vintbas-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Asset names are derived from `uname`, so the Makefile can pick the
+        # right one without mapping runner labels to platforms.
+        os: [ubuntu-latest, macos-15-intel, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v7
+
+      - name: setup haskell
+        uses: haskell-actions/setup@v2
+        with:
+          # vintage-basic predates MonadFail, so it needs
+          # patches/vintbas-ghc-compat.patch to build on anything from GHC 8.6
+          # onwards. Pinned because the patches are verified against this
+          # version and nothing forces a newer one.
+          ghc-version: '9.4.8'
+          cabal-version: '3.10'
+
+      - name: build vintbas
+        run: |
+          name="vintbas-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
+          scripts/build-vintbas.sh "$name"
+          echo "ASSET_NAME=$name" >> "$GITHUB_ENV"
+
+      # Guards the whole point of the patch: the same seed must produce the
+      # same output twice, and a different seed must produce different output.
+      - name: verify determinism
+        run: |
+          roll() { printf '200\nN\n' | ./"$ASSET_NAME" examples/dice/dice.bas; }
+          a="$(roll)"
+          b="$(roll)"
+          c="$(export VINTBAS_SEED=1; roll)"
+          if [ "$a" != "$b" ]; then echo "not deterministic: two default runs differ"; exit 1; fi
+          if [ "$a" = "$c" ]; then echo "VINTBAS_SEED had no effect"; exit 1; fi
+          echo "deterministic, and VINTBAS_SEED changes the sequence"
+
+      - name: upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ASSET_NAME }}
+          path: ${{ env.ASSET_NAME }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/vintbas-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: download binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          chmod +x assets/*
+          gh release create "$GITHUB_REF_NAME" assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Vintage BASIC 1.0.3 built with the patches in \`patches/\`, seeded deterministically from \`VINTBAS_SEED\` (default 0). See #20."
