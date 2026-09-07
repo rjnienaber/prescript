@@ -123,6 +123,18 @@ Script files are JSON, validated against a schema, and declare a format
 version. See [docs/script-format.md](docs/script-format.md) for what that
 version means and how it changes.
 
+A run can declare the environment its program starts with:
+
+```json
+"env": { "VINTBAS_SEED": "0", "TZ": "UTC" }
+```
+
+Declaring an environment declares all of it — the child gets those variables
+and nothing else, so the run does not quietly depend on whatever the calling
+shell happened to export. Add `"inheritEnv": true` to put prescript's own
+environment underneath instead. Omit `env` and the child inherits, which is what
+scripts written before format `0.2` do.
+
 ### When a run fails
 
 `prescript` exits non-zero and writes a report to stderr saying which step went

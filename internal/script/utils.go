@@ -19,6 +19,12 @@ type Run struct {
 	Arguments  []string  `json:"arguments"`
 	ExitCode   int       `json:"exitCode"`
 	Steps      []Step    `json:"steps"`
+
+	// Env is the environment the run declares for its child process, and
+	// InheritEnv asks for prescript's own environment underneath it. See
+	// Run.Environment for what an absent, empty or populated Env means.
+	Env        map[string]string `json:"env,omitempty"`
+	InheritEnv bool              `json:"inheritEnv,omitempty"`
 }
 
 type Script struct {

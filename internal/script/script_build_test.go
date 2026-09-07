@@ -24,7 +24,7 @@ func TestBuildBasicScript(t *testing.T) {
 	assert.NoError(t, err)
 
 	expected := `{
-  "version": "0.1",
+  "version": "` + CurrentVersion + `",
   "runs": [
     {
       "timestamp": "2009-11-17T20:34:58Z",

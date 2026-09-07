@@ -42,7 +42,7 @@ A newer version says what to do about it:
 
 ```
 Script validation errors:
-version: script is written for format 0.2, but this build of prescript reads up to 0.1; upgrade prescript
+version: script is written for format 9.9, but this build of prescript reads up to 0.2; upgrade prescript
 ```
 
 which is a considerably more useful thing to read than the list of unrecognised
@@ -61,6 +61,13 @@ In the same change that alters the schema:
 Do not add a version ahead of the change that needs it: a version that exists
 but means nothing is worse than no version at all.
 
+### Version history
+
+| Version | Change |
+| --- | --- |
+| `0.1` | Initial format. |
+| `0.2` | Added `env` and `inheritEnv` to a run. |
+
 ### Known limitation
 
 The schema validates the union of all fields across known minor versions, so a
@@ -68,3 +75,55 @@ script declaring `0.1` that uses a field introduced in `0.2` is accepted rather
 than rejected. Version-specific schemas would catch it, at a cost in machinery
 that is not yet worth paying. The version declares intent; the schema checks
 shape.
+
+## Environment
+
+A run may declare the environment its program is started with:
+
+```json
+{
+  "version": "0.2",
+  "runs": [{
+    "executable": "vintbas",
+    "arguments": ["dice.bas"],
+    "env": { "VINTBAS_SEED": "0", "TZ": "UTC" },
+    "exitCode": 0,
+    "steps": [ ... ]
+  }]
+}
+```
+
+The rule is that **declaring an environment declares all of it**:
+
+| `env` | child process gets |
+| --- | --- |
+| omitted | prescript's own environment, unchanged |
+| `{ "A": "1" }` | exactly `A=1`, and nothing else |
+| `{ "A": "1" }` with `"inheritEnv": true` | prescript's environment, with `A=1` set over it |
+| `{}` | an empty environment |
+
+Omitting `env` is what every script written before `0.2` does, so those keep
+behaving exactly as they did. Anything that declares one gets the reproducible
+reading: a run that names `TZ` and `VINTBAS_SEED` is not also quietly depending
+on the `LANG` that happened to be exported in the shell that started it.
+
+`inheritEnv` is the escape hatch for a program that needs the caller's
+environment — a compiler toolchain, say — plus a couple of variables of its
+own. Declared values are applied over inherited ones.
+
+### `PATH` in a replaced environment
+
+A run that replaces its environment does not necessarily leave the child with no
+`PATH`: `execvp` and most shells fall back to a compiled-in default when the
+variable is unset, so `#!/usr/bin/env bash` generally still resolves and so do
+the common tools.
+
+That fallback is not something to rely on, because its contents differ by
+platform — on Linux it is typically just `/bin:/usr/bin`, which excludes
+`/usr/local/bin`, where a tool the program shells out to may well live. If the
+program needs to find anything, set `PATH` in `env` explicitly. Depending on a
+per-platform default is the machine-dependence this feature exists to remove.
+
+Resolving the executable named by the script is unaffected either way: prescript
+looks it up on *its own* `PATH` before starting the child, so a script naming
+`vintbas` finds the same binary whether or not the run declares an environment.

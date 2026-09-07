@@ -19,7 +19,7 @@ import (
 //     last release that could read them.
 //
 // Add a version here in the same change that alters the schema, never before.
-var knownVersions = []string{"0.1"}
+var knownVersions = []string{"0.1", "0.2"}
 
 // CurrentVersion is the version `record` writes and the newest this build
 // understands.
