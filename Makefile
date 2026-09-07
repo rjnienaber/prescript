@@ -23,6 +23,14 @@ vintbas:
 	curl -fsSL $(VINTBAS_URL) -o ${HOME}/.local/bin/vintbas
 	chmod +x ${HOME}/.local/bin/vintbas
 
+# Re-records the tape of random values from the reference interpreter. Not
+# wired into any other target on purpose: the tape is checked in because a
+# recorded sequence is only useful when every port replays the same one, and
+# regenerating it on the way past would defeat that.
+.PHONY: tape
+tape:
+	./scripts/record-tape.sh
+
 .PHONY: format
 format:
 	go fmt ./...

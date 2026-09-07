@@ -4,6 +4,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	cfg "github.com/rjnienaber/prescript/internal/config"
@@ -20,16 +22,16 @@ import (
 // They are the language's documented sequence for that seed, not a snapshot of
 // one machine's: Ruby and Python both promise a reproducible Mersenne Twister,
 // Go's is the fixed source it used before it started seeding itself, and
-// Node's is the generator in runners/node/seed.js.
+// Node's is the generator in runners/node/random.js.
 var seededRunners = []struct {
 	runner  string
 	program string
 	drawn   string
 }{
-	{runner: "ruby.yaml", program: "rng.rb", drawn: "684 559 629"},
-	{runner: "python.yaml", program: "rng.py", drawn: "864 394 776"},
+	{runner: "ruby.yaml", program: "rng.rb", drawn: "548 715 602"},
+	{runner: "python.yaml", program: "rng.py", drawn: "844 757 420"},
 	{runner: "node.yaml", program: "rng.js", drawn: "358 105 675"},
-	{runner: "go.yaml", program: "rng.go", drawn: "81 887 847"},
+	{runner: "go.yaml", program: "rng.go", drawn: "604 940 664"},
 }
 
 func repositoryPath(t *testing.T, parts ...string) string {
@@ -66,13 +68,15 @@ func loadRunner(t *testing.T, name string) script.Runner {
 	return runner
 }
 
+// drawingRun scripts one of the rng fixtures: it is asked for as many numbers
+// as `drawn` names, and has to print exactly those.
 func drawingRun(t *testing.T, program string, drawn string) script.Run {
 	t.Helper()
 	return script.Run{
 		Arguments: []string{repositoryPath(t, "test", "fixtures", "rng", program)},
 		ExitCode:  0,
 		Steps: []script.Step{
-			{Line: "HOW MANY? ", Input: "3"},
+			{Line: "HOW MANY? ", Input: strconv.Itoa(len(strings.Fields(drawn)))},
 			{Line: drawn},
 		},
 	}
@@ -126,4 +130,145 @@ func TestWithoutARunnerTheSameProgramIsUnscriptable(t *testing.T) {
 			assert.Contains(t, report, "exited-early: step 2 of 2 did not match")
 		})
 	}
+}
+
+// tapedRunners are the languages whose uniform generator a tape can be fed
+// into. Go is missing on purpose: math/rand's package-level functions draw
+// from a source that cannot be replaced from outside the program, so feeding
+// Go a tape needs the build to cooperate rather than the launch. See
+// docs/determinism.md.
+var tapedRunners = []struct {
+	runner  string
+	program string
+}{
+	{runner: "ruby.yaml", program: "rng.rb"},
+	{runner: "python.yaml", program: "rng.py"},
+	{runner: "node.yaml", program: "rng.js"},
+}
+
+// referenceDraws is what the reference BASIC interpreter itself prints for
+// INT(RND(1) * 1000), five times, at seed 0. Every port replaying the tape
+// should print the same, because it is drawing the same numbers.
+const referenceDraws = "973 411 47 33 295"
+
+func tapePath(t *testing.T) string {
+	t.Helper()
+	return repositoryPath(t, "tapes", "vintbas-seed0.tape")
+}
+
+func tapedConfig(t *testing.T) cfg.PlayConfig {
+	t.Helper()
+	config := drawingConfig()
+	config.Tape = tapePath(t)
+	return config
+}
+
+// The whole point of a tape: one script, one expected transcript, every port.
+// Seeding cannot do this -- each language draws a different sequence from the
+// same seed -- so without a tape this test would need three expectations.
+func TestOneTapeGivesEveryLanguageTheSameNumbers(t *testing.T) {
+	for _, language := range tapedRunners {
+		t.Run(language.runner, func(t *testing.T) {
+			t.Parallel()
+			runner := loadRunner(t, language.runner)
+			runs := script.ApplyRunner([]script.Run{drawingRun(t, language.program, referenceDraws)}, runner)
+
+			assert.Equal(t, 0, Run(tapedConfig(t), runs[0], &utils.CustomLogger{}))
+		})
+	}
+}
+
+// And that those numbers are the reference's, not merely numbers the ports
+// happen to agree on. Reading it from the tape rather than hard-coding it
+// means a regenerated tape cannot silently disagree with the expectation
+// above.
+func TestTheTapeHoldsTheReferencesOwnDraws(t *testing.T) {
+	t.Parallel()
+	contents, err := os.ReadFile(tapePath(t))
+	assert.NoError(t, err)
+
+	var drawn []string
+	for _, line := range strings.Split(string(contents), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		value, err := strconv.ParseFloat(line, 64)
+		assert.NoError(t, err)
+
+		// INT(RND(1) * 1000), which is what the fixtures compute.
+		drawn = append(drawn, strconv.Itoa(int(value*1000)))
+		if len(drawn) == 5 {
+			break
+		}
+	}
+
+	assert.Equal(t, referenceDraws, strings.Join(drawn, " "))
+}
+
+// A port that draws more randomness than the reference did has restructured
+// how it consumes it, which is a finding rather than something to paper over
+// by starting the tape again.
+func TestRunningOffTheEndOfTheTapeFails(t *testing.T) {
+	short := filepath.Join(t.TempDir(), "short.tape")
+	assert.NoError(t, os.WriteFile(short, []byte("# two values, and the program wants five\n.9732723\n.41177148\n"), 0o600))
+
+	for _, language := range tapedRunners {
+		t.Run(language.runner, func(t *testing.T) {
+			runner := loadRunner(t, language.runner)
+			runs := script.ApplyRunner([]script.Run{drawingRun(t, language.program, referenceDraws)}, runner)
+
+			config := drawingConfig()
+			config.Tape = short
+
+			exitCode := 0
+			report := captureStderr(t, func() {
+				exitCode = Run(config, runs[0], &utils.CustomLogger{})
+			})
+
+			assert.NotEqual(t, 0, exitCode)
+			assert.Contains(t, report, "the tape ran out after 2 values")
+		})
+	}
+}
+
+// How much of the tape a port used is what separates a real logic bug from a
+// port that restructured its draws, so a shim writes it down when asked.
+func TestAPortRecordsHowMuchOfTheTapeItUsed(t *testing.T) {
+	for _, language := range tapedRunners {
+		t.Run(language.runner, func(t *testing.T) {
+			t.Parallel()
+			runner := loadRunner(t, language.runner)
+			runs := script.ApplyRunner([]script.Run{drawingRun(t, language.program, referenceDraws)}, runner)
+
+			usage := filepath.Join(t.TempDir(), "usage")
+			runs[0].Env["PRESCRIPT_TAPE_USAGE"] = usage
+
+			assert.Equal(t, 0, Run(tapedConfig(t), runs[0], &utils.CustomLogger{}))
+
+			drawn, err := os.ReadFile(usage)
+			assert.NoError(t, err)
+			assert.Equal(t, "5\n", string(drawn))
+		})
+	}
+}
+
+// A tape that is not there is a mistake in the command line, and a program
+// that finds out halfway through has already printed half a transcript that
+// means nothing.
+func TestAMissingTapeIsReportedBeforeTheRun(t *testing.T) {
+	config := drawingConfig()
+	config.Tape = filepath.Join(t.TempDir(), "absent.tape")
+
+	run := drawingRun(t, "rng.rb", referenceDraws)
+	run.Executable = "ruby"
+
+	exitCode := 0
+	report := captureStderr(t, func() {
+		exitCode = Run(config, run, &utils.CustomLogger{})
+	})
+
+	assert.Equal(t, utils.USER_ERROR, exitCode)
+	assert.Contains(t, report, "could not read the tape")
 }

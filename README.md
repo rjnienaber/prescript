@@ -199,9 +199,23 @@ testable:
 prescript play scripts/33-dice.yaml --runner runners/ruby.yaml -- 33_Dice/ruby/dice.rb
 ```
 
-Ruby, Python, Node and Go ship and are covered by tests. What each one reaches,
-what it does not, and why the same seed still gives four different sequences,
-is in [docs/determinism.md](docs/determinism.md).
+Ruby, Python, Node and Go ship and are covered by tests.
+
+A seed makes one port repeatable, but the same seed gives each language a
+different sequence, so one script still cannot serve them all. `--tape` closes
+that gap: it replays random values recorded from the reference BASIC
+interpreter, so every port draws the same numbers and one expected transcript
+fits all of them.
+
+```
+prescript play scripts/33-dice.yaml --runner runners/ruby.yaml \
+  --tape tapes/vintbas-seed0.tape -- 33_Dice/ruby/dice.rb
+```
+
+A port that runs off the end of the tape fails rather than wrapping, because
+drawing more randomness than the reference did is itself the finding. What each
+runner reaches, what it does not, and where the recorded numbers come from, is
+in [docs/determinism.md](docs/determinism.md).
 
 ### Timeouts
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	cfg "github.com/rjnienaber/prescript/internal/config"
@@ -57,6 +58,48 @@ func getTerminal(config cfg.PlayConfig, run script.Run) (utils.Terminal, error) 
 	return utils.ParseTerminal(run.Terminal)
 }
 
+// tapeVariable is how a shim is told where the tape is. One variable for every
+// language, because a corpus run chooses a tape once and plays it against
+// every port.
+const tapeVariable = "PRESCRIPT_TAPE"
+
+// childEnvironment is the environment the executable is started with, plus the
+// tape if one was named.
+//
+// The tape is appended rather than declared, and that is the point: a run with
+// no env of its own inherits prescript's whole environment, and adding a
+// variable to the declared set would quietly turn that into an environment of
+// exactly one variable. exec keeps the last assignment to a name, so appending
+// also means --tape wins over a runner that named one, the same way --terminal
+// does.
+//
+// The path is made absolute because the value outlives this process's idea of
+// where it is: it is read by a shim, inside an interpreter, started by a
+// runner that may have been written anywhere.
+func childEnvironment(config cfg.PlayConfig, run script.Run) ([]string, error) {
+	environment := run.Environment(os.Environ())
+	if config.Tape == "" {
+		return environment, nil
+	}
+
+	tape, err := filepath.Abs(config.Tape)
+	if err != nil {
+		return nil, err
+	}
+
+	// Checked before the run rather than discovered during it. A missing tape
+	// is a mistake in the command line, and a program that finds out halfway
+	// through has already printed half a transcript that means nothing.
+	if _, err := os.Stat(tape); err != nil {
+		return nil, fmt.Errorf("could not read the tape: %w", err)
+	}
+
+	if environment == nil {
+		environment = os.Environ()
+	}
+	return append(environment, tapeVariable+"="+tape), nil
+}
+
 // reportFailure explains a failed run to whoever is watching. It writes to
 // stderr rather than through the logger on purpose: the default log level is
 // "none", so a failure routed through the logger is discarded and the run
@@ -79,10 +122,16 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 		return utils.USER_ERROR
 	}
 
+	environment, err := childEnvironment(config, run)
+	if err != nil {
+		reportFailure(err.Error())
+		return utils.USER_ERROR
+	}
+
 	executable, err := utils.StartExecutable(utils.ExecutableOptions{
 		Path:      executablePath,
 		Arguments: getArguments(config, run),
-		Env:       run.Environment(os.Environ()),
+		Env:       environment,
 		Terminal:  terminal,
 	}, logger)
 	if err != nil {
