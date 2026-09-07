@@ -74,6 +74,7 @@ but means nothing is worse than no version at all.
 | `0.5` | Added runner files. |
 | `0.6` | Added `terminal`, and made a pty the default. |
 | `0.7` | Added a per-step `timeout`. |
+| `0.8` | A runner may use `${runnerDir}` where it names a path. |
 
 ### Known limitation
 
@@ -463,3 +464,38 @@ runs `ruby -W0 33_Dice/ruby/dice.rb`.
 
 `--exec` still wins over a runner's executable, and says so on stderr when both
 are given.
+
+### `${runnerDir}`
+
+Wherever a runner names a path — in `executable`, in `arguments`, or in an
+`env` value — it may write `${runnerDir}`, which stands for the directory the
+runner file itself was read from:
+
+```yaml
+# runners/ruby.yaml
+version: "0.8"
+executable: ruby
+env:
+  RUBYOPT: "-r${runnerDir}/ruby/seed.rb"
+```
+
+It resolves to an absolute path, so a runner and the files it points at travel
+together whatever directory prescript happens to be run from. Written relative
+instead, the path would hold only while prescript is run from one place, which
+is the one thing a corpus run does not do; written absolute, only on the
+machine that wrote it.
+
+Nothing else is expanded. Env values are handed to the child exactly as
+written, with no shell anywhere to expand anything, so a `${...}` that is not
+`${runnerDir}` is a rejection rather than a literal:
+
+```
+Script validation errors:
+env.RUBYOPT: unknown placeholder ${runnerDr}, the only one is ${runnerDir}
+```
+
+The alternative is a misspelling reaching the interpreter unchanged and being
+reported as a missing file, a long way from the runner that named it.
+
+This is what makes a shim addressable, which is what makes a random program
+scriptable at all. See [docs/determinism.md](determinism.md).

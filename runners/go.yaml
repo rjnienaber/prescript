@@ -1,0 +1,29 @@
+# How to start a Go port, and how to make its randomness repeatable.
+#
+#   prescript play dice.yaml --runner runners/go.yaml
+#
+# Alone among these runners this one needs no shim file, because Go ships the
+# hook itself. It also compiles rather than interprets: `go run` is what makes
+# a port runnable from source the way the others are, at the cost of a build on
+# the first run.
+version: "0.8"
+executable: go
+arguments: [run]
+
+env:
+  # math/rand seeds itself from entropy at startup unless told not to, and then
+  # falls back to the fixed seed it used before Go 1.20.
+  #
+  # This does nothing for math/rand/v2, which has no global seed to set and no
+  # equivalent switch: a port written against v2 is deterministic only if it
+  # constructs its own rand.New(rand.NewPCG(...)). Verified, not assumed --
+  # v2 draws different numbers on every run with this set.
+  GODEBUG: randautoseed=0
+
+  # Unused by the hook above, and set anyway so that a port choosing to read a
+  # seed for itself reads the same one as every other language.
+  PRESCRIPT_SEED: "0"
+
+# `go run` needs a toolchain, a module cache and a home directory, all of which
+# it finds through the environment.
+inheritEnv: true

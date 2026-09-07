@@ -185,6 +185,24 @@ One runner per language and one script per program means a hundred programs in
 a dozen languages is a hundred-odd files rather than twelve hundred. See
 [docs/script-format.md](docs/script-format.md#runners).
 
+### Determinism
+
+Most of the programs worth testing this way are games, and games roll dice. A
+program that draws random numbers prints something different on every run, so a
+script saying what it should print is wrong the moment it is written.
+
+`runners/` holds a runner per language that seeds the language's generator
+before the program starts, so the port itself does not have to be edited to be
+testable:
+
+```
+prescript play scripts/33-dice.yaml --runner runners/ruby.yaml -- 33_Dice/ruby/dice.rb
+```
+
+Ruby, Python, Node and Go ship and are covered by tests. What each one reaches,
+what it does not, and why the same seed still gives four different sequences,
+is in [docs/determinism.md](docs/determinism.md).
+
 ### Timeouts
 
 `--timeout` bounds how long the program may go on saying nothing, and defaults

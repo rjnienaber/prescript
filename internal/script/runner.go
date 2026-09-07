@@ -3,7 +3,10 @@ package script
 import (
 	_ "embed"
 	json2 "encoding/json"
+	"fmt"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 
 	schema "github.com/xeipuuv/gojsonschema"
@@ -33,6 +36,16 @@ func ParseRunnerFromFile(filePath string) (Runner, error) {
 	}
 
 	runner, err := ParseRunnerFromBytes(contents)
+	if err != nil {
+		return Runner{}, err
+	}
+
+	directory, err := filepath.Abs(filepath.Dir(filePath))
+	if err != nil {
+		return Runner{}, err
+	}
+
+	runner, err = expandPlaceholders(runner, directory)
 	if err != nil {
 		return Runner{}, err
 	}
@@ -68,6 +81,67 @@ func ParseRunnerFromBytes(json []byte) (Runner, error) {
 	}
 
 	return runner, nil
+}
+
+// runnerDir is the one placeholder a runner may use, and it stands for the
+// directory the runner file itself was read from.
+//
+// A runner that activates a shim has to name a file — an interpreter flag like
+// RUBYOPT=-r<file> is a path and nothing else. Written relative to the working
+// directory that path holds only while prescript is run from one place, which
+// is exactly what a corpus run does not do. Written absolute it holds only on
+// the machine that wrote it. Resolved against the runner file, a runner and
+// the shim it activates travel together and can be checked in.
+const runnerDir = "runnerDir"
+
+var placeholderPattern = regexp.MustCompile(`\$\{([^}]*)\}`)
+
+// expandPlaceholders resolves ${runnerDir} everywhere a runner can name a
+// path, and rejects anything else spelled the same way.
+//
+// Rejecting is the point: env values are handed to the child verbatim, with no
+// shell anywhere to expand them, so a misspelled ${runnerDr} would otherwise
+// reach the interpreter as a literal and be reported as a missing file
+// somewhere far from the runner that named it.
+func expandPlaceholders(runner Runner, directory string) (Runner, error) {
+	var unknown []string
+
+	expand := func(field, value string) string {
+		return placeholderPattern.ReplaceAllStringFunc(value, func(match string) string {
+			if match[2:len(match)-1] == runnerDir {
+				return directory
+			}
+
+			unknown = append(unknown, fmt.Sprintf("%s: unknown placeholder %s, the only one is ${%s}", field, match, runnerDir))
+			return match
+		})
+	}
+
+	runner.Executable = expand("executable", runner.Executable)
+	for i, argument := range runner.Arguments {
+		runner.Arguments[i] = expand(fmt.Sprintf("arguments.%d", i), argument)
+	}
+
+	// Sorted, because a map's order is not one: two runs of the same broken
+	// runner should be able to report the same thing.
+	for _, name := range sortedNames(runner.Env) {
+		runner.Env[name] = expand("env."+name, runner.Env[name])
+	}
+
+	if len(unknown) > 0 {
+		return Runner{}, validationError(unknown...)
+	}
+
+	return runner, nil
+}
+
+func sortedNames(env map[string]string) []string {
+	names := make([]string, 0, len(env))
+	for name := range env {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // ApplyRunner merges a runner's launch details into every run of a script. The

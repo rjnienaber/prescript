@@ -1,6 +1,8 @@
 package script
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -130,4 +132,81 @@ func TestApplyRunnerSuppliesTheTerminal(t *testing.T) {
 func TestScriptTerminalWinsOverRunnerTerminal(t *testing.T) {
 	run := runnerFor(t, []Run{{Terminal: "pty"}}, Runner{Terminal: "pipes"})
 	assert.Equal(t, "pty", run.Terminal)
+}
+
+func TestRunnerDirResolvesToTheRunnerFilesDirectory(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	path := filepath.Join(directory, "ruby.yaml")
+	writeRunner(t, path, `version: "0.8"
+executable: ruby
+arguments: ["-I${runnerDir}/lib"]
+env:
+  RUBYOPT: "-r${runnerDir}/ruby/seed.rb"
+`)
+
+	runner, err := ParseRunnerFromFile(path)
+	assert.NoError(t, err)
+
+	// Absolute, because the point of the placeholder is a path that survives
+	// prescript being run from somewhere else.
+	resolved, err := filepath.Abs(directory)
+	assert.NoError(t, err)
+	assert.Equal(t, "-r"+resolved+"/ruby/seed.rb", runner.Env["RUBYOPT"])
+	assert.Equal(t, []string{"-I" + resolved + "/lib"}, runner.Arguments)
+}
+
+func TestRunnerDirResolvesInTheExecutable(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	path := filepath.Join(directory, "wrapped.yaml")
+	writeRunner(t, path, `version: "0.8"
+executable: "${runnerDir}/run.sh"
+`)
+
+	runner, err := ParseRunnerFromFile(path)
+	assert.NoError(t, err)
+
+	resolved, err := filepath.Abs(directory)
+	assert.NoError(t, err)
+	assert.Equal(t, resolved+"/run.sh", runner.Executable)
+}
+
+// A misspelled placeholder would otherwise reach the interpreter as a literal
+// and be reported as a missing file, a long way from the runner that named it.
+func TestUnknownPlaceholderIsRejected(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	path := filepath.Join(directory, "ruby.yaml")
+	writeRunner(t, path, `version: "0.8"
+executable: ruby
+env:
+  RUBYOPT: "-r${runnerDr}/seed.rb"
+`)
+
+	_, err := ParseRunnerFromFile(path)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "env.RUBYOPT: unknown placeholder ${runnerDr}")
+	assert.Contains(t, err.Error(), "the only one is ${runnerDir}")
+}
+
+func TestARunnerWithoutPlaceholdersIsUntouched(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	path := filepath.Join(directory, "ruby.yaml")
+	writeRunner(t, path, `version: "0.8"
+executable: ruby
+env:
+  PRESCRIPT_SEED: "0"
+`)
+
+	runner, err := ParseRunnerFromFile(path)
+	assert.NoError(t, err)
+	assert.Equal(t, "ruby", runner.Executable)
+	assert.Equal(t, "0", runner.Env["PRESCRIPT_SEED"])
+}
+
+func writeRunner(t *testing.T, path string, contents string) {
+	t.Helper()
+	assert.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
 }

@@ -30,7 +30,12 @@ jobs:
           go-version: ${{ matrix.go-version }}
 
       - name: make test
+        # Every language the shipped runners seed is present on this image, so
+        # a runner test that skips here is a runner nobody is checking. This
+        # makes that a failure rather than a quieter suite.
         run: make test
+        env:
+          PRESCRIPT_REQUIRE_RUNNERS: "1"
 
       - name: make build_dev
         run: make build_dev
