@@ -36,6 +36,11 @@ type Run struct {
 	// Run.Environment for what an absent, empty or populated Env means.
 	Env        map[string]string `json:"env,omitempty"`
 	InheritEnv bool              `json:"inheritEnv,omitempty"`
+
+	// RunnerArguments come from a runner file rather than from the script, and
+	// always precede the run's own arguments: the runner names the interpreter
+	// and its flags, the script names the program to feed it.
+	RunnerArguments []string `json:"-"`
 }
 
 type Script struct {

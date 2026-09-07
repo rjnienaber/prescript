@@ -64,3 +64,25 @@ func TestSingleRunStillReturnsItsOwnExitCode(t *testing.T) {
 
 	assert.Equal(t, utils.CLI_ERROR, RunAll(multiRunConfig(t), runs, &utils.CustomLogger{}))
 }
+
+// A runner's flags belong to the interpreter and come first; what follows names
+// the program, and the command line may still replace that half on its own.
+func TestRunnerArgumentsComeFirst(t *testing.T) {
+	t.Parallel()
+
+	run := script.Run{RunnerArguments: []string{"-W0"}, Arguments: []string{"dice.rb"}}
+
+	assert.Equal(t, []string{"-W0", "dice.rb"}, getArguments(cfg.PlayConfig{}, run))
+	assert.Equal(t, []string{"-W0", "other.rb"},
+		getArguments(cfg.PlayConfig{Arguments: []string{"other.rb"}}, run))
+}
+
+func TestArgumentsAreUnchangedWithoutARunner(t *testing.T) {
+	t.Parallel()
+
+	run := script.Run{Arguments: []string{"dice.bas"}}
+
+	assert.Equal(t, []string{"dice.bas"}, getArguments(cfg.PlayConfig{}, run))
+	assert.Equal(t, []string{"other.bas"},
+		getArguments(cfg.PlayConfig{Arguments: []string{"other.bas"}}, run))
+}
