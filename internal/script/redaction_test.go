@@ -24,7 +24,6 @@ func TestRedactionMatchesTheVaryingPart(t *testing.T) {
 	step, err := parseWithRedactions(t, `{"rolls": "[0-9]+"}`, `" 7             {{rolls}} "`)
 	assert.NoError(t, err)
 	assert.True(t, step.Redacted)
-	assert.True(t, step.UsesPattern())
 	assert.True(t, step.LineRegex.MatchString(" 7             807 "))
 	assert.True(t, step.LineRegex.MatchString(" 7             12 "))
 }
@@ -60,7 +59,7 @@ func TestLineWithoutPlaceholdersStaysLiteral(t *testing.T) {
 	step, err := parseWithRedactions(t, `{"n": "[0-9]+"}`, `"HOW MANY ROLLS? "`)
 	assert.NoError(t, err)
 	assert.False(t, step.Redacted)
-	assert.False(t, step.UsesPattern())
+	assert.Empty(t, step.LineRegex.String())
 }
 
 func TestUnknownRedactionIsRejected(t *testing.T) {
@@ -93,19 +92,6 @@ redactions.n: error parsing regexp: missing closing ): ` + "`(unterminated`"
 	assert.Equal(t, expected, err.Error())
 }
 
-func TestStepCannotBeBothRegexAndRedacted(t *testing.T) {
-	document := `{
-  "version": "0.4",
-  "redactions": {"n": "[0-9]+"},
-  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "seed {{n}}", "isRegex": true}]}]
-}`
-	_, err := ParseScriptFromBytes([]byte(document))
-	assert.Error(t, err)
-	expected := `Script validation errors:
-runs.0.steps.0.line: a step cannot both be a regular expression and use redactions`
-	assert.Equal(t, expected, err.Error())
-}
-
 // Redactions are declared for the script, so runs being compared normalise the
 // same things in the same way rather than each carrying its own copy.
 func TestRedactionsApplyToEveryRun(t *testing.T) {
@@ -123,20 +109,4 @@ func TestRedactionsApplyToEveryRun(t *testing.T) {
 		assert.True(t, run.Steps[0].Redacted, run.Name)
 		assert.True(t, run.Steps[0].LineRegex.MatchString("rolled 6"), run.Name)
 	}
-}
-
-// isRegex still works. It is superseded, not removed: taking it away would
-// mean rewriting every script that uses one, which is a major version bump.
-func TestIsRegexStillWorks(t *testing.T) {
-	document := `{
-  "version": "0.4",
-  "runs": [{"arguments": [], "exitCode": 0, "steps": [{"line": "hello \\w+", "isRegex": true}]}]
-}`
-	script, err := ParseScriptFromBytes([]byte(document))
-	assert.NoError(t, err)
-
-	step := script.Runs[0].Steps[0]
-	assert.True(t, step.UsesPattern())
-	assert.False(t, step.Redacted)
-	assert.True(t, step.LineRegex.MatchString("hello richard"))
 }

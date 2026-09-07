@@ -23,8 +23,7 @@ func TestBasicScript(t *testing.T) {
       "line": "enter your name: ",
       "input": "richard"
     }, {
-      "line": "hello \\w+",
-      "isRegex": true
+      "line": "hello richard"
     }]
   }]
 }`
@@ -45,13 +44,11 @@ func TestBasicScript(t *testing.T) {
 
 	assert.Equal(t, "enter your name: ", run.Steps[0].Line)
 	assert.Equal(t, "richard", run.Steps[0].Input)
-	assert.False(t, run.Steps[0].IsRegex)
 
 	stepOne := run.Steps[1]
-	assert.Equal(t, "hello \\w+", stepOne.Line)
+	assert.Equal(t, "hello richard", stepOne.Line)
 	assert.Equal(t, "", stepOne.Input)
-	assert.True(t, stepOne.IsRegex)
-	assert.True(t, stepOne.LineRegex.MatchString("hello richard"))
+	assert.False(t, stepOne.Redacted)
 }
 
 func TestGeneratesNames(t *testing.T) {
@@ -95,8 +92,7 @@ func TestValidationFailsForIncorrectType(t *testing.T) {
       "line": "enter your name: ",
       "input": "richard"
     }, {
-      "line": "hello \\w+",
-      "isRegex": true
+      "line": "hello richard"
     }]
   }]
 }`
@@ -184,16 +180,19 @@ func TestEveryKnownVersionIsReadable(t *testing.T) {
 	}
 }
 
-func TestHandlesInvalidRegex(t *testing.T) {
+// isRegex was removed in 0.9, and a step's properties are closed so that a
+// script still carrying one is told about it rather than quietly matched
+// literally.
+func TestRejectsIsRegex(t *testing.T) {
 	basicScript := `{
-  "version": "0.1",
+  "version": "0.9",
   "runs": [{
     "arguments": [
       "-l"
     ],
     "exitCode": 0,
     "steps": [{
-      "line": "hello (w+",
+      "line": "hello \\w+",
       "isRegex": true
     }]
   }]
@@ -201,7 +200,7 @@ func TestHandlesInvalidRegex(t *testing.T) {
 	_, err := ParseScriptFromBytes([]byte(basicScript))
 	assert.Error(t, err)
 	expected := `Script validation errors:
-runs.0.steps.0.line: error parsing regexp: missing closing ): ` + "`hello (w+`"
+runs.0.steps.0: Additional property isRegex is not allowed`
 	assert.Equal(t, expected, err.Error())
 }
 

@@ -18,8 +18,12 @@ import (
 //     majors are dropped from this list at that point, and the error names the
 //     last release that could read them.
 //
+// While MAJOR is 0 the format is not stable and a minor may take something
+// away as well as add it, which is what 0.x means everywhere else and what
+// 0.9 did to isRegex. Once 1.0 is cut, the rule above is a promise.
+//
 // Add a version here in the same change that alters the schema, never before.
-var knownVersions = []string{"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8"}
+var knownVersions = []string{"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9"}
 
 // CurrentVersion is the version `record` writes and the newest this build
 // understands.

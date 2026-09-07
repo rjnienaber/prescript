@@ -17,11 +17,12 @@ var redactionPlaceholder = regexp.MustCompile(`\{\{([^{}]*)\}\}`)
 // into a regular expression, substituting the named pattern and quoting
 // everything around it.
 //
-// This is what a fixture wants instead of isRegex. Masking one volatile number
-// with isRegex means hand-writing a regular expression for the whole line, at
-// which point the line stops being readable as the output it stands for and
-// the intent behind the mask is lost. A name keeps both: the line still looks
-// like what the program prints, and {{seed}} says why that part varies.
+// This is the only way a step matches by pattern. The alternative it replaced
+// -- declaring the whole line to be a regular expression -- meant hand-writing
+// one to mask a single volatile number, at which point the line stopped being
+// readable as the output it stands for and the intent behind the mask was
+// lost. A name keeps both: the line still looks like what the program prints,
+// and {{seed}} says why that part varies.
 func compileRedactions(script Script) []string {
 	var errors []string
 
@@ -43,11 +44,6 @@ func compileRedactions(script Script) []string {
 			}
 
 			where := fmt.Sprintf("runs.%d.steps.%d.line", runIndex, stepIndex)
-			if step.IsRegex {
-				errors = append(errors, where+": a step cannot both be a regular expression and use redactions")
-				continue
-			}
-
 			pattern, unknown := buildPattern(step.Line, placeholders, script.Redactions, known)
 			if len(unknown) > 0 {
 				errors = append(errors, fmt.Sprintf("%s: %s", where, unknownRedactions(unknown, script.Redactions)))
@@ -71,8 +67,7 @@ func compileRedactions(script Script) []string {
 }
 
 // buildPattern anchors at both ends: a redacted line stands for the whole line
-// the program printed, the same as a line matched literally does. isRegex is
-// unanchored and stays that way, because scripts already rely on it.
+// the program printed, the same as a line matched literally does.
 func buildPattern(line string, placeholders [][]int, redactions map[string]string, known map[string]bool) (string, []string) {
 	var pattern strings.Builder
 	var unknown []string

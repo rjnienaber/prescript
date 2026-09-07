@@ -9,7 +9,6 @@ type Step struct {
 	Line      string        `json:"line"`
 	LineRegex regexp.Regexp `json:"-"`
 	Input     string        `json:"input,omitempty"`
-	IsRegex   bool          `json:"isRegex,omitempty"`
 
 	// Redacted is set while parsing, for a line that referred to a redaction
 	// and so matches by pattern rather than by equality. It is not part of the
@@ -24,12 +23,6 @@ type Step struct {
 
 	// TimeoutDuration is Timeout parsed, and zero when it was not given.
 	TimeoutDuration time.Duration `json:"-"`
-}
-
-// UsesPattern reports whether the step matches by regular expression rather
-// than by exact equality, whichever of the two ways it got there.
-func (step Step) UsesPattern() bool {
-	return step.IsRegex || step.Redacted
 }
 
 type Run struct {
