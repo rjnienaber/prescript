@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -24,7 +25,8 @@ func main() {
 
 	logger, err := utils.NewLogger(level)
 	if err != nil {
-		os.Exit(utils.INTERNAL_ERROR)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(utils.USER_ERROR)
 	}
 	logger.Info("successfully parsed arguments and flags")
 	config.Logger = &logger
@@ -32,6 +34,9 @@ func main() {
 	if config.Subcommand == cfg.PlayCommand {
 		scriptFile, err := script.ParseScriptFromFile(config.Play.ScriptFile)
 		if err != nil {
+			// Also on stderr: logging alone is invisible at the default level,
+			// so a malformed script file exited non-zero in silence.
+			fmt.Fprintf(os.Stderr, "could not parse script file %s: %s\n", config.Play.ScriptFile, err)
 			logger.Info("scriptFile file couldn't be parsed:", err)
 			os.Exit(utils.USER_ERROR)
 		}

@@ -3,6 +3,7 @@ package play
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	cfg "github.com/rjnienaber/prescript/internal/config"
@@ -33,6 +34,16 @@ func getArguments(config cfg.PlayConfig, run script.Run) []string {
 	return run.Arguments
 }
 
+// reportFailure explains a failed run to whoever is watching. It writes to
+// stderr rather than through the logger on purpose: the default log level is
+// "none", so a failure routed through the logger is discarded and the run
+// exits non-zero having said nothing at all about why. Stderr also keeps the
+// report out of the executable's own output on stdout, so --quiet still
+// silences the program without hiding the diagnosis.
+func reportFailure(message string) {
+	fmt.Fprintln(os.Stderr, message)
+}
+
 func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 	executablePath, err := getExecutableFilePath(config, run)
 	if err != nil {
@@ -51,14 +62,9 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 		tokenResult := processor.NextToken(config.Timeout)
 		if tokenResult.Error != nil {
 			if strings.Contains(tokenResult.Error.Error(), "timed out waiting") {
-				nextLine := matcher.NextExpectedLine()
-				if nextLine == "" {
-					processor.logger.Error("timed out waiting for executable to finish")
-				} else {
-					processor.logger.Error("timed out waiting for next line:", nextLine)
-				}
+				reportFailure(matcher.FailureReport(fmt.Sprintf("timed out after %s", config.Timeout)))
 			} else {
-				processor.logger.Error("errored waiting for next token", tokenResult.Error)
+				reportFailure(fmt.Sprintf("errored waiting for output from the executable: %s", tokenResult.Error))
 			}
 
 			return utils.CLI_ERROR
@@ -74,7 +80,7 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 		}
 
 		if char == "\n" {
-			matcher.ResetLine()
+			matcher.EndOfLine()
 			continue
 		}
 
@@ -86,7 +92,7 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 
 	exitCode, err := executable.WaitForExit()
 	if matcher.MissingSteps() {
-		logger.Debug("executable finished but there are missing steps")
+		reportFailure(matcher.FailureReport(fmt.Sprintf("the executable exited with %d before this step was reached", exitCode)))
 		return utils.CLI_ERROR
 	}
 
@@ -97,8 +103,9 @@ func Run(config cfg.PlayConfig, run script.Run, logger utils.Logger) int {
 
 	// we rely on exit code in the script to know whether to fail on errors
 	if exitCode != run.ExitCode {
-		msg := fmt.Sprintf("exit code from script (%d) did not match exit code from executable (%d)", run.ExitCode, exitCode)
+		msg := fmt.Sprintf("every step matched, but the executable exited with %d and the script expects %d", exitCode, run.ExitCode)
 		logger.Info(msg)
+		reportFailure(msg)
 		return utils.INTERNAL_ERROR
 	}
 
