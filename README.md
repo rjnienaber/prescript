@@ -117,6 +117,25 @@ prescript record [script file] [executable] [flags] -- [args]
 **N.B.** The `--` convention is used to stop processing arguments for `prescript`. Any arguments after
 this point are passed to the executable.
 
+### Development
+
+```
+make dependencies   # build tooling, plus the vintbas interpreter the examples run against
+make prepush        # format, lint, test, build, examples
+```
+
+`make examples` runs a BASIC program under Vintage BASIC, which seeds its random
+number generator from the clock and so produces different output on every run.
+`make vintbas` therefore installs a patched build, produced by
+`scripts/build-vintbas.sh` from the Hackage release plus the patches in
+`patches/`, that seeds from `$VINTBAS_SEED` (default `0`) instead. Set that
+variable to walk a program through a different sequence.
+
+Note that the sequence is also tied to the version of Haskell's `random`
+package pinned in the build script: `random` 1.2 replaced the generator behind
+`StdGen`, so the same seed yields different numbers either side of it. Changing
+the pin invalidates any recorded output.
+
 ### Get in touch
 * Slack: Find me as @rjnienaber on https://gophers.slack.com/ 
 * Twitter: [@rjnienaber](https://twitter.com/rjnienaber)

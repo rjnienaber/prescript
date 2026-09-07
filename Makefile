@@ -1,5 +1,7 @@
 GCI_VERSION := v0.14.0
-VINTBAS_URL := https://github.com/rjnienaber/vintage-basic/releases/download/047411c/vintbas_prng_disabled
+VINTBAS_RELEASE := vintbas-1.0.3-1
+VINTBAS_ASSET := vintbas-$(shell uname -s | tr '[:upper:]' '[:lower:]')-$(shell uname -m)
+VINTBAS_URL := https://github.com/rjnienaber/prescript/releases/download/$(VINTBAS_RELEASE)/$(VINTBAS_ASSET)
 
 .PHONY: dependencies
 dependencies: tools vintbas
@@ -10,10 +12,11 @@ dependencies: tools vintbas
 tools:
 	go install github.com/daixiang0/gci@$(GCI_VERSION)
 
-# The reference BASIC interpreter, a build of Vintage BASIC with the PRNG
-# disabled. This download is currently broken: rjnienaber/vintage-basic no
-# longer exists and the asset is gone. See the tracking issue before
-# re-enabling `examples` in CI.
+# The reference BASIC interpreter: Vintage BASIC 1.0.3, patched to seed its
+# RNG from VINTBAS_SEED (default 0) rather than the clock, so a program's
+# output can be scripted against. Built by .github/workflows/vintbas.yaml from
+# the patches in patches/ and published on this repository; run
+# scripts/build-vintbas.sh to build it yourself.
 .PHONY: vintbas
 vintbas:
 	mkdir -p ${HOME}/.local/bin

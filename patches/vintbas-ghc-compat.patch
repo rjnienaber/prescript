@@ -1,0 +1,17 @@
+--- a/src/Control/Monad/CPST.hs	2026-09-07 09:28:17
++++ b/src/Control/Monad/CPST.hs	2026-09-07 09:34:40
+@@ -40,6 +40,14 @@
+       return x = CPST (\k -> k x)
+       (CPST mx) >>= f = CPST (\k -> mx (\x -> unCPST (f x) k))
+ 
++-- Before GHC 8.6, a failable pattern bind in a do block used Monad's own
++-- `fail`, which defaulted to `error`. GHC 8.6 moved `fail` to MonadFail and
++-- made the desugaring demand an instance, so the interpreter's pattern binds
++-- (e.g. @(FloatVal index) <- getScalarVar control@) no longer compile without
++-- one. This instance restores exactly the previous behaviour.
++instance MonadFail (CPST o m) where
++      fail msg = CPST (\_ -> error msg)
++
+ -- The basic monad utilities: runCPST, lift, liftIO
+ 
+ -- | Runs code in the CPST monad.

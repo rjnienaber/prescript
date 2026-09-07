@@ -1,0 +1,38 @@
+diff -ruN a/src/Language/VintageBasic/BasicMonad.hs b/src/Language/VintageBasic/BasicMonad.hs
+--- a/src/Language/VintageBasic/BasicMonad.hs	2026-09-07 09:28:17
++++ b/src/Language/VintageBasic/BasicMonad.hs	2026-09-07 09:28:17
+@@ -18,7 +18,9 @@
+ import IO.IOStream
+ import Language.VintageBasic.Result
+ import Language.VintageBasic.Syntax
++import System.Environment (lookupEnv)
+ import System.Random
++import Text.Read (readMaybe)
+ 
+ -- | Values in BASIC programs.
+ data Val = FloatVal Float | IntVal Int | StringVal String
+@@ -253,10 +255,21 @@
+ seedRandom :: Int -> Code ()
+ seedRandom i = modify (\state -> state { randomGen = (mkStdGen i) })
+ 
+--- | Seeds the BAISC random number generator based on the number of
+--- seconds since midnight.
++-- | Seeds the BASIC random number generator.
++--
++-- Upstream seeds this from the wall clock, both once at startup and again on
++-- every @RANDOMIZE@ statement, which makes every run of a program different.
++-- That is fine for playing games and useless for testing them, so this build
++-- takes the seed from the @VINTBAS_SEED@ environment variable instead,
++-- defaulting to 0 when it is unset or unparseable.
++--
++-- Determinism is the default on purpose: an unset variable must not silently
++-- restore clock seeding, or a fixture would pass locally and fail at random.
++-- Set @VINTBAS_SEED@ to vary the sequence deliberately.
+ seedRandomFromTime :: Code ()
+-seedRandomFromTime = secondsSinceMidnight >>= seedRandom
++seedRandomFromTime = do
++    envSeed <- liftIO (lookupEnv "VINTBAS_SEED")
++    seedRandom (fromMaybe 0 (envSeed >>= readMaybe))
+ 
+ -- | Get the previously generated random number from the state.
+ -- Used for @RND(0)@.
