@@ -86,15 +86,15 @@ func TestFailureReportOmitsMarkerWhenNothingWasReceived(t *testing.T) {
 	assert.NotContains(t, report, "^")
 }
 
-func TestFailureReportOmitsMarkerForRegexSteps(t *testing.T) {
+func TestFailureReportOmitsMarkerForRedactedSteps(t *testing.T) {
 	t.Parallel()
 	pattern := regexp.MustCompile(`^Rolled \d+$`)
-	matcher := newTestMatcher([]script.Step{{Line: pattern.String(), IsRegex: true, LineRegex: *pattern}})
+	matcher := newTestMatcher([]script.Step{{Line: "Rolled {{n}}", Redacted: true, LineRegex: *pattern}})
 
 	feed(t, &matcher, "Rolled twelve")
 	report := matcher.FailureReport(NoMatch, "nothing matched it within 5s")
 
-	assert.Contains(t, report, "(regular expression)")
+	assert.Contains(t, report, "(with redactions applied)")
 	// Pointing at the first byte where output differs from a pattern would be
 	// meaningless.
 	assert.NotContains(t, report, "first difference")

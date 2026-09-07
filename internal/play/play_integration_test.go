@@ -84,7 +84,7 @@ func TestDoubleInput(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
-func TestDoubleInputRegex(t *testing.T) {
+func TestDoubleInputRedaction(t *testing.T) {
 	t.Parallel()
 
 	config := createConfig(t, "fixtures/double_input.sh")
@@ -92,7 +92,7 @@ func TestDoubleInputRegex(t *testing.T) {
 	run := script.Run{Steps: []script.Step{
 		{Line: "First number: ", Input: "1"},
 		{Line: "Second number: ", Input: "2"},
-		{Line: "Sum: \\d", LineRegex: *regex, IsRegex: true},
+		{Line: "Sum: {{digit}}", LineRegex: *regex, Redacted: true},
 	}}
 
 	exitCode := Run(config.Play, run, config.Logger)

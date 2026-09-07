@@ -120,18 +120,15 @@ func (matcher *StepMatcher) FailureReport(mode FailureMode, detail string) strin
 	var report strings.Builder
 	fmt.Fprintf(&report, "%s: step %d of %d did not match (%s)\n\n",
 		mode, matcher.currentStepIndex+1, len(matcher.steps), detail)
-	switch {
-	case step.Redacted:
+	if step.Redacted {
 		fmt.Fprintf(&report, "  expected  %q  (with redactions applied)\n", expected)
-	case step.IsRegex:
-		fmt.Fprintf(&report, "  expected  %q  (regular expression)\n", expected)
-	default:
+	} else {
 		fmt.Fprintf(&report, "  expected  %q\n", expected)
 	}
 	fmt.Fprintf(&report, "  received  %q\n", received)
 	// A character-level pointer only means something when the two are meant to
 	// be equal; against a pattern the first differing byte is noise.
-	if !step.UsesPattern() {
+	if !step.Redacted {
 		report.WriteString(differenceMarker(expected, received, len(reportLabelIndent)))
 	}
 
@@ -228,7 +225,7 @@ func (matcher *StepMatcher) Match(char string) error {
 
 func (matcher *StepMatcher) matchLine(step script.Step) (bool, error) {
 	var matched bool
-	if step.UsesPattern() {
+	if step.Redacted {
 		matched = step.LineRegex.MatchString(matcher.currentLine)
 	} else {
 		matched = matcher.currentLine == step.Line

@@ -3,33 +3,12 @@ package script
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	schema "github.com/xeipuuv/gojsonschema"
 )
-
-func validateRegexes(runs []Run) []string {
-	var regexErrors []string
-	// validate regexes should they exist
-	for runIndex, run := range runs {
-		for stepIndex := range run.Steps {
-			step := &run.Steps[stepIndex]
-			if step.IsRegex {
-				regex, err := regexp.Compile(step.Line)
-				if err != nil {
-					regexError := fmt.Sprintf("runs.%d.steps.%d.line: %s", runIndex, stepIndex, err.Error())
-					regexErrors = append(regexErrors, regexError)
-				} else {
-					step.LineRegex = *regex
-				}
-			}
-		}
-	}
-	return regexErrors
-}
 
 // validateTimeouts parses each step's timeout override. A duration that does
 // not parse is reported here rather than at play time, alongside the regexes

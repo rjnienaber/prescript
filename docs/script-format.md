@@ -52,6 +52,10 @@ field names the same script would otherwise produce.
 
 ### Adding a version
 
+While MAJOR is `0` the format is not stable, and a minor may take a field away
+as well as add one -- which is what `0.x` means everywhere else, and what `0.9`
+did to `isRegex`. Once `1.0` is cut, removing a field becomes a major bump.
+
 In the same change that alters the schema:
 
 1. Append the new version to `knownVersions`. `CurrentVersion` follows the last
@@ -75,6 +79,7 @@ but means nothing is worse than no version at all.
 | `0.6` | Added `terminal`, and made a pty the default. |
 | `0.7` | Added a per-step `timeout`. |
 | `0.8` | A runner may use `${runnerDir}` where it names a path. |
+| `0.9` | Removed `isRegex`; redactions are the only way to match by pattern. |
 
 ### Known limitation
 
@@ -386,9 +391,9 @@ way. Normalising differently is how a comparison quietly stops comparing.
 
 ### Why not just a regular expression
 
-`isRegex` swaps exact matching for a regular expression over the entire line. To
-mask one volatile number with it you have to write a pattern for everything
-around that number too:
+Until `0.9` a step could set `isRegex` and match the whole line as a regular
+expression. To mask one volatile number with it you had to write a pattern for
+everything around that number too:
 
 ```yaml
 - line: '^wrote /[^ ]+ in [0-9]+ms$'
@@ -398,16 +403,20 @@ around that number too:
 which no longer reads as the output it stands for, and no longer says which part
 was expected to vary or why. The version with `{{elapsed}}` says both.
 
-`isRegex` still works. It is superseded, not removed: taking it away means every
-script using one has to be rewritten, which is a major version bump. Prefer
-redactions in anything written from now on.
+`isRegex` was removed in `0.9`, and a step's fields are closed, so a script still
+carrying one is rejected rather than quietly matched literally:
+
+```
+Script validation errors:
+runs.0.steps.0: Additional property isRegex is not allowed
+```
 
 ### Errors
 
 A placeholder naming a redaction the script does not declare is rejected, and
 the message lists the ones it does declare. A redaction whose pattern does not
 compile is reported once, against the declaration rather than against every step
-that refers to it. A step cannot be both `isRegex` and use redactions.
+that refers to it.
 
 ## Runners
 
