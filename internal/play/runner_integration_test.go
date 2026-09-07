@@ -98,11 +98,11 @@ func TestRunnersMakeRandomnessRepeatable(t *testing.T) {
 			runs := script.ApplyRunner([]script.Run{drawingRun(t, language.program, language.drawn)}, runner)
 
 			logger := &utils.CustomLogger{}
-			assert.Equal(t, 0, Run(drawingConfig(), runs[0], logger))
+			assert.Equal(t, 0, Run(drawingConfig(), runs[0], logger).ExitCode)
 
 			// Twice, because "deterministic" is a claim about runs and not
 			// about one run.
-			assert.Equal(t, 0, Run(drawingConfig(), runs[0], logger))
+			assert.Equal(t, 0, Run(drawingConfig(), runs[0], logger).ExitCode)
 		})
 	}
 }
@@ -123,7 +123,7 @@ func TestWithoutARunnerTheSameProgramIsUnscriptable(t *testing.T) {
 
 			exitCode := 0
 			report := captureStderr(t, func() {
-				exitCode = Run(drawingConfig(), run, &utils.CustomLogger{})
+				exitCode = Run(drawingConfig(), run, &utils.CustomLogger{}).ExitCode
 			})
 
 			assert.NotEqual(t, 0, exitCode, "expected unseeded output to differ from the recorded draw")
@@ -173,7 +173,7 @@ func TestOneTapeGivesEveryLanguageTheSameNumbers(t *testing.T) {
 			runner := loadRunner(t, language.runner)
 			runs := script.ApplyRunner([]script.Run{drawingRun(t, language.program, referenceDraws)}, runner)
 
-			assert.Equal(t, 0, Run(tapedConfig(t), runs[0], &utils.CustomLogger{}))
+			assert.Equal(t, 0, Run(tapedConfig(t), runs[0], &utils.CustomLogger{}).ExitCode)
 		})
 	}
 }
@@ -224,7 +224,7 @@ func TestRunningOffTheEndOfTheTapeFails(t *testing.T) {
 
 			exitCode := 0
 			report := captureStderr(t, func() {
-				exitCode = Run(config, runs[0], &utils.CustomLogger{})
+				exitCode = Run(config, runs[0], &utils.CustomLogger{}).ExitCode
 			})
 
 			assert.NotEqual(t, 0, exitCode)
@@ -245,7 +245,7 @@ func TestAPortRecordsHowMuchOfTheTapeItUsed(t *testing.T) {
 			usage := filepath.Join(t.TempDir(), "usage")
 			runs[0].Env["PRESCRIPT_TAPE_USAGE"] = usage
 
-			assert.Equal(t, 0, Run(tapedConfig(t), runs[0], &utils.CustomLogger{}))
+			assert.Equal(t, 0, Run(tapedConfig(t), runs[0], &utils.CustomLogger{}).ExitCode)
 
 			drawn, err := os.ReadFile(usage)
 			assert.NoError(t, err)
@@ -266,7 +266,7 @@ func TestAMissingTapeIsReportedBeforeTheRun(t *testing.T) {
 
 	exitCode := 0
 	report := captureStderr(t, func() {
-		exitCode = Run(config, run, &utils.CustomLogger{})
+		exitCode = Run(config, run, &utils.CustomLogger{}).ExitCode
 	})
 
 	assert.Equal(t, utils.USER_ERROR, exitCode)

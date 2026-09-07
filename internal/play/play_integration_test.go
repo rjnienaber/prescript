@@ -48,14 +48,14 @@ func createConfig(t *testing.T, fileName string) cfg.Config {
 func TestOutput(t *testing.T) {
 	t.Parallel()
 	config := createConfig(t, "fixtures/output.sh")
-	exitCode := Run(config.Play, script.Run{}, config.Logger)
+	exitCode := Run(config.Play, script.Run{}, config.Logger).ExitCode
 	assert.Equal(t, 0, exitCode)
 }
 
 func TestOutputWithDelay(t *testing.T) {
 	t.Parallel()
 	config := createConfig(t, "fixtures/output_with_delay.sh")
-	exitCode := Run(config.Play, script.Run{}, config.Logger)
+	exitCode := Run(config.Play, script.Run{}, config.Logger).ExitCode
 	assert.Equal(t, 0, exitCode)
 }
 
@@ -65,7 +65,7 @@ func TestInput(t *testing.T) {
 	config := createConfig(t, "fixtures/input.sh")
 	run := script.Run{Steps: []script.Step{{Line: "Please enter your name: ", Input: "Richard"}}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -79,7 +79,7 @@ func TestDoubleInput(t *testing.T) {
 		{Line: "Second number: ", Input: "2"},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -95,7 +95,7 @@ func TestDoubleInputRedaction(t *testing.T) {
 		{Line: "Sum: {{digit}}", LineRegex: *regex, Redacted: true},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -109,7 +109,7 @@ func TestPassingArguments(t *testing.T) {
 		Arguments: []string{"Rachel"},
 	}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -125,7 +125,7 @@ func TestSpecifyExecutableInScript(t *testing.T) {
 	}
 	config.Play.ExecutablePath = ""
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -146,7 +146,7 @@ func TestDuplicatedLinesInScript(t *testing.T) {
 			{Line: "success!"},
 		},
 	}
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -162,7 +162,7 @@ func TestCheckExitCode(t *testing.T) {
 		},
 		ExitCode: 1,
 	}
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -176,7 +176,7 @@ func TestFailIfUnrecognisedStep(t *testing.T) {
 		{Line: "Hello, Rachel"},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 1, exitCode)
 }
@@ -190,7 +190,7 @@ func TestFailIfUnexpectedStdin(t *testing.T) {
 		{Line: "Hello, Rachel"},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 1, exitCode)
 }
@@ -206,7 +206,7 @@ func TestFailIfExecutableTimesOutAfterSteps(t *testing.T) {
 		{Line: "Expecting this line"},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 1, exitCode)
 }
@@ -227,7 +227,7 @@ func TestDeclaredEnvReplacesTheParentEnvironment(t *testing.T) {
 		},
 	}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -245,7 +245,7 @@ func TestInheritEnvKeepsTheParentEnvironment(t *testing.T) {
 		},
 	}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -259,7 +259,7 @@ func TestNoDeclaredEnvInheritsTheParentEnvironment(t *testing.T) {
 		{Line: "PARENT=visible"},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -279,7 +279,7 @@ func TestRedactionMatchesAVolatileValue(t *testing.T) {
 	parsed, err := script.ParseScriptFromBytes([]byte(document))
 	assert.NoError(t, err)
 
-	exitCode := Run(config.Play, parsed.Runs[0], config.Logger)
+	exitCode := Run(config.Play, parsed.Runs[0], config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -296,7 +296,7 @@ func TestRedactionStillFailsOnARealMismatch(t *testing.T) {
 	parsed, err := script.ParseScriptFromBytes([]byte(document))
 	assert.NoError(t, err)
 
-	exitCode := Run(config.Play, parsed.Runs[0], config.Logger)
+	exitCode := Run(config.Play, parsed.Runs[0], config.Logger).ExitCode
 
 	assert.NotEqual(t, 0, exitCode)
 }
@@ -314,7 +314,7 @@ func TestExecutableRunsUnderAPtyByDefault(t *testing.T) {
 		{Line: "Hello, Rachel"},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -329,7 +329,7 @@ func TestThePtyIsAlwaysTheSameSize(t *testing.T) {
 	config := createConfig(t, "fixtures/terminal_size.sh")
 	run := script.Run{Steps: []script.Step{{Line: "24 80"}}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -345,7 +345,7 @@ func TestTerminalPipesGivesTheExecutablePipes(t *testing.T) {
 		{Line: "Hello, Rachel"},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -363,7 +363,7 @@ func TestRunCanAskForPipes(t *testing.T) {
 		},
 	}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -384,7 +384,7 @@ func TestCommandLineTerminalOverridesTheScript(t *testing.T) {
 		},
 	}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -395,7 +395,7 @@ func TestUnrecognisedTerminalIsRejected(t *testing.T) {
 	config := createConfig(t, "fixtures/tty.sh")
 	config.Play.Terminal = "tty"
 
-	exitCode := Run(config.Play, script.Run{}, config.Logger)
+	exitCode := Run(config.Play, script.Run{}, config.Logger).ExitCode
 
 	assert.Equal(t, utils.USER_ERROR, exitCode)
 }
@@ -414,7 +414,7 @@ func TestInputIsNotEchoedBackUnderAPty(t *testing.T) {
 		{Line: "How do you do, Richard"},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -451,7 +451,7 @@ func TestFailureModesAreNamed(t *testing.T) {
 		config := createConfig(t, "fixtures/input.sh")
 		config.Play.Timeout = getTimeout(500)
 		run := script.Run{Steps: []script.Step{{Line: "Hello, Rachel"}}}
-		assert.Equal(t, utils.CLI_ERROR, Run(config.Play, run, config.Logger))
+		assert.Equal(t, utils.CLI_ERROR, Run(config.Play, run, config.Logger).ExitCode)
 	})
 	assert.Contains(t, report, "no-match: step 1 of 1 did not match (nothing matched it within 500ms)")
 
@@ -459,7 +459,7 @@ func TestFailureModesAreNamed(t *testing.T) {
 	report = captureStderr(t, func() {
 		config := createConfig(t, "fixtures/output.sh")
 		run := script.Run{Steps: []script.Step{{Line: "Hello, Rachel"}}}
-		assert.Equal(t, utils.CLI_ERROR, Run(config.Play, run, config.Logger))
+		assert.Equal(t, utils.CLI_ERROR, Run(config.Play, run, config.Logger).ExitCode)
 	})
 	assert.Contains(t, report, "exited-early: step 1 of 1 did not match (the executable exited with 0)")
 
@@ -468,7 +468,7 @@ func TestFailureModesAreNamed(t *testing.T) {
 		config := createConfig(t, "fixtures/timeout.sh")
 		config.Play.Timeout = getTimeout(500)
 		run := script.Run{Steps: []script.Step{{Line: "Expecting this line"}}}
-		assert.Equal(t, utils.CLI_ERROR, Run(config.Play, run, config.Logger))
+		assert.Equal(t, utils.CLI_ERROR, Run(config.Play, run, config.Logger).ExitCode)
 	})
 	assert.Equal(t, "hung: all 1 steps matched, but the executable had not exited after 500ms\n", report)
 
@@ -476,7 +476,7 @@ func TestFailureModesAreNamed(t *testing.T) {
 	report = captureStderr(t, func() {
 		config := createConfig(t, "fixtures/exit_code.sh")
 		run := script.Run{Steps: []script.Step{{Line: "Exit Code test"}}}
-		assert.Equal(t, utils.INTERNAL_ERROR, Run(config.Play, run, config.Logger))
+		assert.Equal(t, utils.INTERNAL_ERROR, Run(config.Play, run, config.Logger).ExitCode)
 	})
 	assert.Contains(t, report, "wrong-exit-code: all 1 steps matched, but the executable exited with 1 and the script expects 0")
 }
@@ -493,7 +493,7 @@ func TestStepTimeoutOverridesTheRunTimeout(t *testing.T) {
 		{Line: "Done", Timeout: "5s", TimeoutDuration: 5 * time.Second},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, 0, exitCode)
 }
@@ -510,7 +510,7 @@ func TestSlowStepFailsWithoutAnOverride(t *testing.T) {
 		{Line: "Done"},
 	}}
 
-	exitCode := Run(config.Play, run, config.Logger)
+	exitCode := Run(config.Play, run, config.Logger).ExitCode
 
 	assert.Equal(t, utils.CLI_ERROR, exitCode)
 }
@@ -528,7 +528,7 @@ func TestTimeoutKillsTheExecutableAndItsChildren(t *testing.T) {
 		Steps:     []script.Step{{Line: "Started"}},
 	}
 
-	assert.Equal(t, utils.CLI_ERROR, Run(config.Play, run, config.Logger))
+	assert.Equal(t, utils.CLI_ERROR, Run(config.Play, run, config.Logger).ExitCode)
 
 	// The background process writes the marker a second in. Long enough after
 	// that to be sure: it either never ran again, or it did.
