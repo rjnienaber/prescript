@@ -4,10 +4,18 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"os"
+	"syscall"
 	"time"
 
 	"github.com/rjnienaber/prescript/internal/utils"
 )
+
+// ErrTimeout is what NextToken returns when the program said nothing for long
+// enough. It is a sentinel rather than a message because the caller has to
+// tell it apart from a read that actually failed, and those are two different
+// things to report.
+var ErrTimeout = errors.New("timed out waiting for output from the executable")
 
 type OutputProcessor struct {
 	scanner *bufio.Scanner
@@ -73,15 +81,30 @@ func (processor *OutputProcessor) read(timeout time.Duration) utils.CapturedToke
 	case res := <-scannerChannel:
 		scannerResult = res
 	case <-time.After(timeout):
-		// TODO: kill command if there is a timeout
-		return utils.CapturedToken{Error: errors.New("timed out waiting for cli to return expected output")}
+		// The caller kills the program: this is only the reading half, and it
+		// has no business deciding the run is over.
+		return utils.CapturedToken{Error: ErrTimeout}
 	}
 
 	processor.logger.Debugf("last scanner result: '%t'", scannerResult)
 
 	if !scannerResult {
+		// A scan that stops is usually the program having finished, but not
+		// always, and reporting a failed read as a clean finish diagnoses it
+		// as the wrong bug entirely.
+		if err := processor.scanner.Err(); err != nil && !isEndOfOutput(err) {
+			return utils.CapturedToken{Error: err}
+		}
 		return utils.CapturedToken{Finished: true}
 	}
 
 	return utils.CapturedToken{Token: processor.scanner.Text()}
+}
+
+// isEndOfOutput reports whether an error is only the program having gone away.
+// Reading this end of a pty after the child exits gives EIO on Linux where a
+// pipe would give EOF, and closing the pty out from under a blocked read gives
+// os.ErrClosed. None of the three is a fault.
+func isEndOfOutput(err error) bool {
+	return errors.Is(err, io.EOF) || errors.Is(err, syscall.EIO) || errors.Is(err, os.ErrClosed)
 }

@@ -50,9 +50,9 @@ func TestFailureReportShowsWhatWasReceived(t *testing.T) {
 	matcher := newTestMatcher([]script.Step{{Line: "HOW MANY ROLES? "}})
 
 	feed(t, &matcher, "HOW MANY ROLLS? ")
-	report := matcher.FailureReport("timed out after 5s")
+	report := matcher.FailureReport(NoMatch, "nothing matched it within 5s")
 
-	assert.Contains(t, report, "step 1 of 1 did not match (timed out after 5s)")
+	assert.Contains(t, report, "no-match: step 1 of 1 did not match (nothing matched it within 5s)")
 	assert.Contains(t, report, `expected  "HOW MANY ROLES? "`)
 	assert.Contains(t, report, `received  "HOW MANY ROLLS? "`)
 
@@ -67,7 +67,7 @@ func TestFailureReportQuotesTrailingWhitespace(t *testing.T) {
 	matcher := newTestMatcher([]script.Step{{Line: "Name: "}})
 
 	feed(t, &matcher, "Name:")
-	report := matcher.FailureReport("timed out after 5s")
+	report := matcher.FailureReport(NoMatch, "nothing matched it within 5s")
 
 	// Unquoted, these two lines would look identical, which is the whole
 	// reason for quoting them.
@@ -80,7 +80,7 @@ func TestFailureReportOmitsMarkerWhenNothingWasReceived(t *testing.T) {
 	t.Parallel()
 	matcher := newTestMatcher([]script.Step{{Line: "THANKS FOR PLAYING"}})
 
-	report := matcher.FailureReport("the executable exited with 0 before this step was reached")
+	report := matcher.FailureReport(ExitedEarly, "the executable exited with 0")
 
 	assert.Contains(t, report, `received  ""`)
 	assert.NotContains(t, report, "^")
@@ -92,7 +92,7 @@ func TestFailureReportOmitsMarkerForRegexSteps(t *testing.T) {
 	matcher := newTestMatcher([]script.Step{{Line: pattern.String(), IsRegex: true, LineRegex: *pattern}})
 
 	feed(t, &matcher, "Rolled twelve")
-	report := matcher.FailureReport("timed out after 5s")
+	report := matcher.FailureReport(NoMatch, "nothing matched it within 5s")
 
 	assert.Contains(t, report, "(regular expression)")
 	// Pointing at the first byte where output differs from a pattern would be
@@ -105,7 +105,7 @@ func TestFailureReportIncludesPrecedingOutput(t *testing.T) {
 	matcher := newTestMatcher([]script.Step{{Line: "Ready? "}})
 
 	feed(t, &matcher, "loading data\nchecking licence\nlicence expired\n")
-	report := matcher.FailureReport("timed out after 5s")
+	report := matcher.FailureReport(NoMatch, "nothing matched it within 5s")
 
 	assert.Contains(t, report, "output since the last matched step:")
 	assert.Contains(t, report, "loading data")
@@ -123,7 +123,7 @@ func TestContextOnlyCoversOutputSinceTheLastMatch(t *testing.T) {
 
 	feed(t, &matcher, "welcome\nFirst number: ")
 	feed(t, &matcher, "\nthinking\nSecond numbr: ")
-	report := matcher.FailureReport("timed out after 5s")
+	report := matcher.FailureReport(NoMatch, "nothing matched it within 5s")
 
 	assert.Contains(t, report, "step 2 of 2 did not match")
 	assert.Contains(t, report, "thinking")
@@ -140,7 +140,7 @@ func TestContextIsCapped(t *testing.T) {
 		output.WriteString("line\n")
 	}
 	feed(t, &matcher, output.String())
-	report := matcher.FailureReport("timed out after 5s")
+	report := matcher.FailureReport(NoMatch, "nothing matched it within 5s")
 
 	assert.Equal(t, maxReportedLines, strings.Count(report, "line"))
 }
@@ -151,7 +151,7 @@ func TestFailureReportCountsStepsNeverReached(t *testing.T) {
 
 	reportFor := func(steps []script.Step) string {
 		matcher := newTestMatcher(steps)
-		return matcher.FailureReport("timed out")
+		return matcher.FailureReport(NoMatch, "nothing matched it within 5s")
 	}
 
 	assert.Contains(t, reportFor(steps), "2 later steps were never reached")
@@ -164,8 +164,33 @@ func TestFailureReportWhenEveryStepMatched(t *testing.T) {
 	matcher := newTestMatcher([]script.Step{{Line: "Ready? "}})
 
 	feed(t, &matcher, "Ready? ")
-	report := matcher.FailureReport("timed out after 5s")
+	report := matcher.FailureReport(Hung, "the executable had not exited after 5s")
 
 	assert.False(t, matcher.MissingSteps())
-	assert.Equal(t, "all 1 steps matched, but the run failed: timed out after 5s", report)
+	assert.Equal(t, "hung: all 1 steps matched, but the executable had not exited after 5s", report)
+}
+
+// The mode leads the report so that a corpus of failures can be counted and
+// sorted by what went wrong, without parsing the prose after it.
+func TestFailureReportLeadsWithTheMode(t *testing.T) {
+	t.Parallel()
+	matcher := newTestMatcher([]script.Step{{Line: "Ready? "}})
+
+	report := matcher.FailureReport(ExitedEarly, "the executable exited with 1")
+
+	assert.True(t, strings.HasPrefix(report, "exited-early: "))
+}
+
+// Nothing in a report is measured, so the same divergence produces the same
+// bytes however slow the machine it ran on was.
+func TestFailureReportIsTheSameEveryTime(t *testing.T) {
+	t.Parallel()
+
+	reportFor := func() string {
+		matcher := newTestMatcher([]script.Step{{Line: "Ready? "}, {Line: "Go"}})
+		feed(t, &matcher, "loading\nReady")
+		return matcher.FailureReport(NoMatch, "nothing matched it within 5s")
+	}
+
+	assert.Equal(t, reportFor(), reportFor())
 }

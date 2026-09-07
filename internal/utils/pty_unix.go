@@ -68,3 +68,9 @@ func startPty(cmd *exec.Cmd) (*os.File, error) {
 
 	return ptmx, nil
 }
+
+// killGroup signals every process in the group led by pid. The child is a
+// session leader under a pty, so its group holds it and anything it started.
+func killGroup(pid int) error {
+	return syscall.Kill(-pid, syscall.SIGKILL)
+}
