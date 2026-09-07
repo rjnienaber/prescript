@@ -319,6 +319,21 @@ func TestExecutableRunsUnderAPtyByDefault(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
+// A program asking how wide its terminal is gets the same answer here as it
+// does on the next machine, whatever terminal prescript itself was started
+// from -- and an answer at all, which a pty opened without a size does not
+// give: that one reports zero rows and columns.
+func TestThePtyIsAlwaysTheSameSize(t *testing.T) {
+	t.Parallel()
+
+	config := createConfig(t, "fixtures/terminal_size.sh")
+	run := script.Run{Steps: []script.Step{{Line: "24 80"}}}
+
+	exitCode := Run(config.Play, run, config.Logger)
+
+	assert.Equal(t, 0, exitCode)
+}
+
 func TestTerminalPipesGivesTheExecutablePipes(t *testing.T) {
 	t.Parallel()
 

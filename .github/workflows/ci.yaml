@@ -48,6 +48,22 @@ jobs:
       - name: make examples
         run: make examples
 
+  # The pinned environment, built and then used. A comparison between two
+  # ports means nothing if the two ran in different worlds, so the image a
+  # developer runs and the image CI runs have to be the one image -- and the
+  # only way to know it still builds is to build it on every change.
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v7
+
+      - name: make image
+        run: make image
+
+      - name: make docker_test
+        run: make docker_test
+
   # Formatting and linting are properties of the repository, not of any one
   # Go version, so they run once on the newest.
   checks:
