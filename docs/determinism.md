@@ -104,8 +104,8 @@ sitting and identical on every platform.
 The first two are runners waiting for a machine to test them on. The last three
 are a different problem: a compiled language's randomness is decided when it is
 built, and a runner only gets to speak at launch. Those need the build to
-cooperate, which is what makes the pinned image in the container work
-(issue #15) the place they belong.
+cooperate, which is what makes the [pinned image](container.md) the place they
+belong.
 
 An untested runner is worse than a missing one — it makes a corpus look seeded
 when it is not — so these are listed rather than guessed at.
@@ -229,8 +229,8 @@ Transcripts also diverge on locale, timezone, terminal size, hash seeds and
 address-space layout, and in practice those cause more churn than the RNG does.
 `runners/python.yaml` sets `PYTHONHASHSEED=0` for that reason — a program that
 prints a set is otherwise a different program on every run whatever its
-generator does — but the rest belongs in a pinned image rather than in a runner
-(issue #15).
+generator does — but the rest belongs in a pinned image rather than in a
+runner, and that is what `docker/` is: see [container.md](container.md).
 
 Those runners set `inheritEnv: true`, which is a compromise and worth naming: a
 Ruby installed by rbenv, a Python by pyenv or a Node by nvm all find their own

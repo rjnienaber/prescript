@@ -1,4 +1,5 @@
 GCI_VERSION := v0.14.0
+IMAGE ?= prescript-env:dev
 VINTBAS_RELEASE := vintbas-1.0.3-1
 VINTBAS_ASSET := vintbas-$(shell uname -s | tr '[:upper:]' '[:lower:]')-$(shell uname -m)
 VINTBAS_URL := https://github.com/rjnienaber/prescript/releases/download/$(VINTBAS_RELEASE)/$(VINTBAS_ASSET)
@@ -30,6 +31,30 @@ vintbas:
 .PHONY: tape
 tape:
 	./scripts/record-tape.sh
+
+# The pinned environment. Interpreter versions, locale, timezone, terminal
+# size, hash seeds and address layout all change what a program prints without
+# changing what it does, so a difference between two ports only means something
+# when both ran in here. See docs/container.md.
+.PHONY: image
+image:
+	docker build --platform linux/amd64 -t $(IMAGE) docker
+
+# The same checks CI runs, run in the same image CI runs them in.
+.PHONY: docker_test
+docker_test:
+	./docker/run.sh make container_checks
+
+.PHONY: docker_shell
+docker_shell:
+	./docker/run.sh bash
+
+# Everything that needs an interpreter, and nothing that needs the lint and
+# format tooling: those are properties of the repository rather than of the
+# environment, and pinning a linter into the image would mean rebuilding it to
+# upgrade one.
+.PHONY: container_checks
+container_checks: test build_dev examples
 
 .PHONY: format
 format:
