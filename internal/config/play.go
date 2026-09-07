@@ -16,6 +16,7 @@ type PlayConfig struct {
 	RunnerFile     string
 	Terminal       string
 	Tape           string
+	BugReport      string
 	Arguments      []string
 }
 
@@ -39,6 +40,7 @@ func createPlaySubCommand(config *Config) *cobra.Command {
 	playCmd.Flags().StringVarP(&config.Play.RunnerFile, "runner", "r", "", "runner file describing how to launch an implementation")
 	playCmd.Flags().StringVar(&config.Play.Terminal, "terminal", "", "override what the executable is given for its standard streams (pty or pipes)")
 	playCmd.Flags().StringVar(&config.Play.Tape, "tape", "", "file of recorded random values to replay to the executable, instead of letting it draw its own")
+	playCmd.Flags().StringVar(&config.Play.BugReport, "bug-report", "", "write the first divergence to this file as a report someone else can act on")
 
 	defaultTimeout := 30 * time.Second
 	playCmd.Flags().DurationVarP(&config.Play.Timeout, "timeout", "t", defaultTimeout, "timeout waiting for output from external command")

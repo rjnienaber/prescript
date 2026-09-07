@@ -14,7 +14,15 @@ import (
 
 func main() {
 	config, err := cfg.GetConfig()
-	if err != nil || config.Subcommand == cfg.NoCommand {
+	if err != nil {
+		os.Exit(utils.USER_ERROR)
+	}
+
+	if config.Handled {
+		os.Exit(utils.SUCCESS)
+	}
+
+	if config.Subcommand == cfg.NoCommand {
 		os.Exit(utils.USER_ERROR)
 	}
 

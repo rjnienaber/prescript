@@ -186,3 +186,9 @@ different output belong in two scripts.
 `prescript` still exits with the first non-zero code any run produced. The
 comparison is a report, not a verdict: it says where the implementations parted
 company, and what to do about that is the reader's call.
+
+## Filing a finding
+
+`--bug-report <file>` writes the earliest finding out as Markdown, with the
+interpreter version, the container digest, the tape and everything else needed
+to answer "works for me". See [bug-reports.md](bug-reports.md).

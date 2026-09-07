@@ -94,11 +94,11 @@ lint:
 
 .PHONY: build_dev
 build_dev:
-	go build -o tmp/prescript cmd/prescript/main.go
+	go build -o tmp/prescript ./cmd/prescript
 
 .PHONY: build_release
 build_release:
-	go build -ldflags="-s -w" -a -o tmp/prescript cmd/prescript/main.go
+	go build -ldflags="-s -w" -a -o tmp/prescript ./cmd/prescript
 
 .PHONY: test
 test:

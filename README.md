@@ -102,6 +102,7 @@ prescript play [script file] [flags] -- [executable arguments]
 | `-t`                    | timeout waiting for output from external command         | `bool` | `30s  ` | No        |
 | `--terminal`            | what the executable is given for its standard streams (`pty` or `pipes`) | `enum` | `pty` | No        |
 | `--tape`                | file of recorded random values to replay to the executable | `string` |   | No        |
+| `--bug-report`          | write the first divergence to this file as a report someone else can act on | `string` |   | No        |
 | `-- [args]`             | arguments for the executable, overriding those in the script | `list` |     | No        |
 
 #### `record`
@@ -297,6 +298,24 @@ spacing around numbers, which ports get wrong constantly and which belongs in
 one report per language rather than one per program. `no-draws` means the port
 had taken nothing from the tape, so randomness is not involved. See
 [docs/comparison.md](docs/comparison.md).
+
+### Filing what it found
+
+The usual answer to a cross-implementation bug report is "works for me", and it
+is usually fair: the two people ran different interpreter builds, in different
+locales, against different random numbers. `--bug-report` writes the first
+divergence to a file with all of that pinned down, because the run already knew
+it:
+
+```bash
+prescript play dice.yaml --tape tapes/vintbas-seed0.tape --bug-report dice.md
+```
+
+The file holds both sides of the divergence and its classification, the
+interpreter version, the container digest, the tape and how much of it the port
+drew, the locale, timezone and terminal size, prescript's own revision, and one
+command that reproduces the lot. It files nothing and changes no exit code. See
+[docs/bug-reports.md](docs/bug-reports.md).
 
 ### Development
 

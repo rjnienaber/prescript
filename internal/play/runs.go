@@ -50,7 +50,31 @@ func RunAll(config cfg.PlayConfig, runs []script.Run, logger utils.Logger) int {
 		fmt.Fprint(os.Stderr, Compare(runs, outcomes).Report())
 	}
 
+	if config.BugReport != "" {
+		writeBugReport(config, runs, outcomes)
+	}
+
 	return result
+}
+
+// writeBugReport is best-effort and says so either way. It runs after every
+// run has finished, so a failure here cannot be retried without paying for the
+// whole script again -- which is exactly why it is reported rather than
+// swallowed, and why it does not change the exit code: the runs already
+// decided that, and a bug report that could not be filed is not a run that
+// passed or failed differently.
+func writeBugReport(config cfg.PlayConfig, runs []script.Run, outcomes []Outcome) {
+	// os.Args rather than the parsed config, because the point of the repro
+	// line is to be the command that was actually run.
+	written, err := WriteBugReport(config, runs, outcomes, os.Args)
+	switch {
+	case err != nil:
+		fmt.Fprintf(os.Stderr, "could not write bug report %s: %s\n", config.BugReport, err)
+	case written:
+		fmt.Fprintf(os.Stderr, "\nbug report written to %s\n", config.BugReport)
+	default:
+		fmt.Fprintf(os.Stderr, "\nnothing to report: no run diverged\n")
+	}
 }
 
 // warnAboutOverrides is a warning rather than a refusal. Overriding one thing
