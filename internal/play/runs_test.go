@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	cfg "github.com/rjnienaber/prescript/internal/config"
-
 	"github.com/rjnienaber/prescript/internal/script"
 	"github.com/rjnienaber/prescript/internal/utils"
 	"github.com/stretchr/testify/assert"
