@@ -135,6 +135,10 @@ shell happened to export. Add `"inheritEnv": true` to put prescript's own
 environment underneath instead. Omit `env` and the child inherits, which is what
 scripts written before format `0.2` do.
 
+A script may hold more than one run, each naming its own executable, which is
+how two implementations of the same program are compared. Every run is played
+even after one fails, and `prescript` exits with the first non-zero code.
+
 ### When a run fails
 
 `prescript` exits non-zero and writes a report to stderr saying which step went
