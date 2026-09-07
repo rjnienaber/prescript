@@ -26,9 +26,16 @@ fi
 # What a bug report has to name alongside the versions inside the image: which
 # image. A published image is identified by its registry digest and a locally
 # built one by its config digest, and either is enough for someone else to get
-# the same bytes.
-DIGEST="$(docker image inspect \
-  --format '{{if .RepoDigests}}{{index .RepoDigests 0}}{{else}}{{.Id}}{{end}}' "$IMAGE")"
+# the same bytes -- but only if the name in front of the digest is one they can
+# reach. `make pull_image` gives the pulled image a local tag, and the daemon
+# then reports a digest under that short name as well as under the registry
+# one, so the registry-qualified entry is picked out by its hostname rather
+# than by being listed first.
+DIGESTS="$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$IMAGE")"
+DIGEST="$(echo "$DIGESTS" | grep -E '^([^/]+\.[^/]*|localhost(:[0-9]+)?)/' | head -n 1 || true)"
+if [ -z "$DIGEST" ]; then
+  DIGEST="$(docker image inspect --format '{{.Id}}' "$IMAGE")"
+fi
 
 # Docker's default seccomp profile permits personality() with a handful of
 # arguments and ADDR_NO_RANDOMIZE is not among them, so fixing the address
