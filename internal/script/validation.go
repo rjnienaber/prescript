@@ -41,6 +41,11 @@ func buildValidationErrors(resultErrors []schema.ResultError, regexErrors []stri
 	// validation errors can be returned in random order so we order them
 	sort.Strings(validationErrors)
 
-	err := errors.New("Script validation errors:\n" + strings.Join(validationErrors, "\n"))
-	return err
+	return validationError(validationErrors...)
+}
+
+// validationError gives every rejection of a script file the same shape, so a
+// version problem reads like a schema problem rather than like a crash.
+func validationError(messages ...string) error {
+	return errors.New("Script validation errors:\n" + strings.Join(messages, "\n"))
 }
