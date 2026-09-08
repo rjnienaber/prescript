@@ -1,0 +1,27 @@
+# How to start a Lua port, and how to make its randomness repeatable.
+#
+#   prescript play dice.yaml --runner runners/lua.yaml
+version: "0.8"
+executable: lua
+
+env:
+  # The standalone interpreter runs this before the program, so a port does not
+  # have to be edited to be made deterministic. The leading @ is what makes it a
+  # file to run rather than a chunk to compile. ${runnerDir} is where this file
+  # lives, so the runner and its shim travel together whatever directory
+  # prescript is run from.
+  #
+  # Lua looks for LUA_INIT_5_4 (or _5_5, and so on) before falling back to this
+  # name, so a port run under a version-specific variable set by something else
+  # would not see the shim -- but nothing sets those by default.
+  LUA_INIT: "@${runnerDir}/lua/random.lua"
+
+  # One variable seeds every language. Two ports of the same program still draw
+  # different numbers from it -- that is what a tape fixes, not a seed -- but
+  # each of them draws the same numbers every time.
+  PRESCRIPT_SEED: "0"
+
+# A lua installed by a version manager, and any C module a port loads, are both
+# found through the environment. Pinning the environment is a container's job
+# rather than a runner's.
+inheritEnv: true

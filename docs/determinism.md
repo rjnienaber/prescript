@@ -58,6 +58,8 @@ prescript play scripts/33-dice.yaml --runner runners/ruby.yaml -- 33_Dice/ruby/d
 | Ruby | `RUBYOPT=-r<shim>` | `rand`, `Kernel#rand` | yes |
 | Python | `sitecustomize.py` on `PYTHONPATH` | the `random` module's functions | yes |
 | Node | `NODE_OPTIONS=--require <shim>` | `Math.random` | yes |
+| Perl | `PERL5OPT=-M<shim>` | `rand`, `srand` | yes |
+| Lua | `LUA_INIT=@<shim>` | `math.random`, `math.randomseed` | yes |
 | Java | `-javaagent:<jar>` rewriting call sites | `Math.random`, `Random`, `ThreadLocalRandom` | yes |
 | .NET | a `System.Random` compiled in ahead of the real one | everything on `Random`, including `Shared` | yes |
 | Go | `GODEBUG=randautoseed=0` | `math/rand`'s global functions | no |
@@ -104,6 +106,11 @@ program constructs for itself, or one that seeds itself deliberately:
 - Ruby: `Random.new(...)`, `SecureRandom`
 - Python: `random.Random(...)` instances, `secrets`, `numpy`
 - Node: `crypto.randomBytes`, `crypto.getRandomValues`
+- Perl: `Math::Random::MT` and the other CPAN generators, `/dev/urandom` read
+  directly, and anything drawing inside an XS module rather than through Perl's
+  own `rand`
+- Lua: a generator a port builds from `math.randomseed`'s return values, and
+  RNGs from LuaRocks
 - Java: `SecureRandom`, `SplittableRandom`, generators built by
   `RandomGeneratorFactory`, and draws made from inside `java.base` rather than
   from the port — `Collections.shuffle(list, rnd)` and `rnd.ints()` call
@@ -128,15 +135,25 @@ platform.
 
 | Language | Mechanism | Why it is not here |
 | --- | --- | --- |
+| Kotlin | the Java agent, plus `kotlin.random` in its owner list | JVM already; not yet verified against a port |
+| VB.NET | a Visual Basic twin of the C# shim | `Rnd` and `Randomize` live in a module rather than a class |
+| MiniScript | a patched interpreter seeded from the environment | `rnd` is an intrinsic and the interpreter has no launch hook |
 | Rust | `[patch.crates-io] getrandom` in `.cargo/config.toml` | build-time, not launch-time |
 | Haskell | vendored `random` with `initStdGen = pure (mkStdGen n)` | build-time, not launch-time |
 | C / C++ | `-include shim.h`, or a `rand.o` linked ahead of libc | build-time, not launch-time |
 
-These are all the same problem: a compiled language's randomness is decided when
-it is built, and a runner only gets to speak at launch. Java and .NET are in the
-table above rather than in this one because both compile on the way to running,
-which gives a runner a compilation to join; a Rust port arrives as a binary, or
-as a build a runner would have to drive.
+The bottom three are all the same problem: a compiled language's randomness is
+decided when it is built, and a runner only gets to speak at launch. Java and
+.NET are in the table above rather than in this one because both compile on the
+way to running, which gives a runner a compilation to join; a Rust port arrives
+as a binary, or as a build a runner would have to drive.
+
+The top three are near misses of different kinds. Kotlin is JVM bytecode, so the
+Java agent already rewrites the ports that reach for `java.util.Random`, and
+`kotlin.random` is a line in the agent's owner list away. MiniScript is the
+largest single set of ports in the corpus and the only one with no launch hook
+at all — the move that fits is the one already made for the reference
+interpreter, which is patched and built from `patches/` rather than hooked.
 
 An untested runner is worse than a missing one — it makes a corpus look seeded
 when it is not — so these are listed rather than guessed at.
@@ -162,14 +179,19 @@ underneath. The test fixtures show it plainly — one program, one seed:
 | Ruby | `548 715 602` |
 | Python | `844 757 420` |
 | Node | `358 105 675` |
+| Perl | `170 749 96` |
+| Lua | `246 234 69` |
 | Java | `730 240 637` |
 | .NET | `358 105 675` |
 | Go | `604 940 664` |
 
-.NET agrees with Node because both shims substitute the same generator, for the
-reason given above. Java's row is the JDK's own LCG, seeded the ordinary way.
-That one agreement is a fact about two shims rather than a property anything
-should lean on — a tape is how ports are made to agree on purpose.
+Each row is the language's own generator, not a snapshot of one machine: Java's
+is the LCG `java.util.Random` specifies exactly, Perl's is drand48, and Lua's is
+the xoshiro256** it has used since 5.4 — checked against 5.4 and 5.5, which
+agree. .NET agrees with Node because both shims substitute the same generator,
+for the reason given above; that one agreement is a fact about two shims rather
+than a property anything should lean on. A tape is how ports are made to agree
+on purpose.
 
 So a seed makes each port repeatable, and one expected-output file still cannot
 serve them all. That is what a tape is for.
@@ -189,8 +211,7 @@ prescript play scripts/33-dice.yaml --runner runners/ruby.yaml \
 loaded switches from seeding to replaying. Nothing else about the run changes,
 and the port is still untouched.
 
-The same tape through the Ruby, Python, Node, Java and .NET runners gives the
-same transcript — which is the whole point, and is what
+The same tape through every runner but Go's gives the same transcript — which is the whole point, and is what
 `TestOneTapeGivesEveryLanguageTheSameNumbers` checks.
 
 ### Where the numbers come from

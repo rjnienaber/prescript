@@ -20,11 +20,14 @@ ARG BASE_DIGEST=sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b0
 FROM --platform=linux/amd64 debian:bookworm-slim@${BASE_DIGEST}
 ARG BASE_DIGEST
 
-# Ruby and Python come from Debian stable, which is what pinning means for a
-# distribution: a fixed series that takes security fixes and no new features
-# for the life of the release. Go, Node, Java, .NET and the reference
-# interpreter are not in it, so they are fetched from upstream and checked
-# against a published checksum before anything is unpacked.
+# Ruby, Python, Perl and Lua come from Debian stable, which is what pinning
+# means for a distribution: a fixed series that takes security fixes and no new
+# features for the life of the release. Lua's package registers /usr/bin/lua
+# through alternatives, which is the name runners/lua.yaml starts.
+#
+# Go, Node, Java, .NET and the reference interpreter are not in it, so they are
+# fetched from upstream and checked against a published checksum before
+# anything is unpacked.
 ARG GO_VERSION=1.24.13
 ARG GO_SHA256=1fc94b57134d51669c72173ad5d49fd62afb0f1db9bf3f798fd98ee423f8d730
 ARG NODE_VERSION=24.20.0
@@ -50,7 +53,9 @@ RUN apt-get update \
       ca-certificates \
       curl \
       git \
+      lua5.4 \
       make \
+      perl \
       python3 \
       ruby \
       tzdata \
@@ -140,6 +145,8 @@ RUN { \
       echo "dotnet=$(dotnet --version)"; \
       echo "python=$(python3 --version | cut -d' ' -f2)"; \
       echo "ruby=$(ruby --version | cut -d' ' -f2)"; \
+      echo "perl=$(perl -e 'print $^V')"; \
+      echo "lua=$(lua -v | cut -d' ' -f2)"; \
       echo "vintbas=${VINTBAS_RELEASE}"; \
       echo "locale=${LC_ALL}"; \
       echo "timezone=${TZ}"; \
