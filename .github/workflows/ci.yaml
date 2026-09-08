@@ -29,6 +29,26 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
+      # The runner image ships older versions of both. Java 25 to match the
+      # container and to clear the agent's floor of 24, where
+      # java.lang.classfile became standard; .NET 10 because a port is a single
+      # .cs file and `dotnet run` only accepts one from 10 onwards.
+      - name: setup java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: setup dotnet
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      # The Java shim is a jar, so unlike every other runner's it has to exist
+      # before the suite can use it.
+      - name: make shims
+        run: make shims
+
       - name: make test
         # Every language the shipped runners seed is present on this image, so
         # a runner test that skips here is a runner nobody is checking. This

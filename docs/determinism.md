@@ -58,7 +58,31 @@ prescript play scripts/33-dice.yaml --runner runners/ruby.yaml -- 33_Dice/ruby/d
 | Ruby | `RUBYOPT=-r<shim>` | `rand`, `Kernel#rand` | yes |
 | Python | `sitecustomize.py` on `PYTHONPATH` | the `random` module's functions | yes |
 | Node | `NODE_OPTIONS=--require <shim>` | `Math.random` | yes |
+| Java | `-javaagent:<jar>` rewriting call sites | `Math.random`, `Random`, `ThreadLocalRandom` | yes |
+| .NET | a `System.Random` compiled in ahead of the real one | everything on `Random`, including `Shared` | yes |
 | Go | `GODEBUG=randautoseed=0` | `math/rand`'s global functions | no |
+
+Java and .NET are the two that reach the program by getting in front of the
+compiler rather than by setting a variable the runtime reads, because neither
+runtime has a variable that would do.
+
+The Java agent rewrites the port's own bytecode as each class loads: a call to
+`Random.nextInt()` becomes a call to the shim, which returns the next tape value
+and ignores the generator it was called on. It rewrites the port and leaves the
+JDK alone, so no platform class is patched and no retransformation happens. The
+agent is a jar, and the only shim that has to be built before it can be used:
+
+```
+make shims
+```
+
+The .NET shim is a source file declaring `namespace System { public class Random }`.
+The C# compiler prefers a type it is compiling over the same type from a
+reference, so the port's `new Random()` binds to the shim without the port
+changing a line. `runners/dotnet.yaml` adds that file to the compilation with an
+MSBuild targets file, which works the same for a single `.cs` file as for a
+`.csproj`. It is the widest of the shims by accident of the mechanism: replacing
+the class replaces `Shuffle`, `GetItems` and `Random.Shared` along with the draws.
 
 Go seeds but cannot be taped. `GODEBUG` turns off the automatic seeding that
 Go 1.20 introduced, which is enough to make one build repeatable, but there is
@@ -80,32 +104,39 @@ program constructs for itself, or one that seeds itself deliberately:
 - Ruby: `Random.new(...)`, `SecureRandom`
 - Python: `random.Random(...)` instances, `secrets`, `numpy`
 - Node: `crypto.randomBytes`, `crypto.getRandomValues`
+- Java: `SecureRandom`, `SplittableRandom`, generators built by
+  `RandomGeneratorFactory`, and draws made from inside `java.base` rather than
+  from the port — `Collections.shuffle(list, rnd)` and `rnd.ints()` call
+  `nextInt` at a call site the agent does not rewrite
+- .NET: `System.Security.Cryptography`, `Guid.NewGuid`, and any draw made
+  inside a pre-compiled dependency, which was compiled against the real
+  `Random` before the shim existed
 - Go: `math/rand/v2`, which has no global seed and ignores `GODEBUG` — verified,
   not assumed
 
 A port using one of those needs either its own runner or a
 [redaction](script-format.md#redactions) for the values it prints.
 
-Node is the one replacement rather than a seeding: V8's `Math.random` cannot be
-seeded — there is no API, and the engine takes entropy when a context is
-created — so the shim substitutes mulberry32, small enough to read in one
-sitting and identical on every platform.
+Node and .NET are replacements rather than seedings. V8's `Math.random` cannot
+be seeded — there is no API, and the engine takes entropy when a context is
+created — and the .NET shim has replaced `Random` outright by the time the port
+asks for one, so there is nothing left underneath to seed. Both substitute
+mulberry32, small enough to read in one sitting and identical on every
+platform.
 
 ### Not yet shipped
 
 | Language | Mechanism | Why it is not here |
 | --- | --- | --- |
-| .NET | `DOTNET_STARTUP_HOOKS` | no toolchain to verify it against |
-| Java | `-javaagent` instrumenting `Math.random` / `Random` | no toolchain to verify it against |
 | Rust | `[patch.crates-io] getrandom` in `.cargo/config.toml` | build-time, not launch-time |
 | Haskell | vendored `random` with `initStdGen = pure (mkStdGen n)` | build-time, not launch-time |
 | C / C++ | `-include shim.h`, or a `rand.o` linked ahead of libc | build-time, not launch-time |
 
-The first two are runners waiting for a machine to test them on. The last three
-are a different problem: a compiled language's randomness is decided when it is
-built, and a runner only gets to speak at launch. Those need the build to
-cooperate, which is what makes the [pinned image](container.md) the place they
-belong.
+These are all the same problem: a compiled language's randomness is decided when
+it is built, and a runner only gets to speak at launch. Java and .NET are in the
+table above rather than in this one because both compile on the way to running,
+which gives a runner a compilation to join; a Rust port arrives as a binary, or
+as a build a runner would have to drive.
 
 An untested runner is worse than a missing one — it makes a corpus look seeded
 when it is not — so these are listed rather than guessed at.
@@ -122,17 +153,23 @@ It looks like the general answer and is not:
 
 ## What a seed does not buy
 
-The same seed does not mean the same numbers. Ruby, Python, Node and Go each
-draw a different sequence from `PRESCRIPT_SEED=0`, because each has a different
-generator underneath. The test fixtures show it plainly — one program, one
-seed, four answers:
+The same seed does not mean the same numbers. Each language draws a different
+sequence from `PRESCRIPT_SEED=0`, because each has a different generator
+underneath. The test fixtures show it plainly — one program, one seed:
 
 | Language | First three draws |
 | --- | --- |
 | Ruby | `548 715 602` |
 | Python | `844 757 420` |
 | Node | `358 105 675` |
+| Java | `730 240 637` |
+| .NET | `358 105 675` |
 | Go | `604 940 664` |
+
+.NET agrees with Node because both shims substitute the same generator, for the
+reason given above. Java's row is the JDK's own LCG, seeded the ordinary way.
+That one agreement is a fact about two shims rather than a property anything
+should lean on — a tape is how ports are made to agree on purpose.
 
 So a seed makes each port repeatable, and one expected-output file still cannot
 serve them all. That is what a tape is for.
@@ -152,8 +189,8 @@ prescript play scripts/33-dice.yaml --runner runners/ruby.yaml \
 loaded switches from seeding to replaying. Nothing else about the run changes,
 and the port is still untouched.
 
-The same tape through the Ruby, Python and Node runners gives the same
-transcript — which is the whole point, and is what
+The same tape through the Ruby, Python, Node, Java and .NET runners gives the
+same transcript — which is the whole point, and is what
 `TestOneTapeGivesEveryLanguageTheSameNumbers` checks.
 
 ### Where the numbers come from

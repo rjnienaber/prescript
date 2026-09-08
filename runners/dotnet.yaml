@@ -1,0 +1,49 @@
+# How to start a .NET port, and how to make its randomness repeatable.
+#
+#   prescript play dice.yaml --runner runners/dotnet.yaml
+#
+# `dotnet run` takes either shape a port comes in: a file-based app, which the
+# .NET 10 SDK compiles and runs in one step the way `go run` does, or a project
+# given as `--project <directory>`.
+version: "0.8"
+executable: dotnet
+
+# Alone among these runners, this one is activated by the compiler rather than
+# at launch: the shim declares System.Random in source, and the C# compiler
+# prefers a type it can see the source of. This property is how the shim gets
+# into a build the port did not ask for it in. ${runnerDir} is where this file
+# lives, so the runner and its shim travel together whatever directory
+# prescript is run from.
+#
+# On the command line rather than in env, though MSBuild reads a variable of
+# the same name: a file-based app is built through the SDK in-process, where
+# the environment does not become MSBuild properties. A property reaches both
+# shapes. See runners/dotnet/prescript.targets.
+arguments: ["run", "--property:CustomBeforeMicrosoftCommonTargets=${runnerDir}/dotnet/prescript.targets"]
+
+env:
+  # One variable seeds every language. Two ports of the same program still draw
+  # different numbers from it -- that is what a tape fixes, not a seed -- but
+  # each of them draws the same numbers every time.
+  PRESCRIPT_SEED: "0"
+
+  # The first `dotnet` command on a fresh machine prints a welcome banner and
+  # sends a telemetry ping. The banner would arrive in the middle of the
+  # transcript being compared, on exactly the runs least likely to be looked at
+  # twice.
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+  # System.Console sends the terminal's keypad-application string the first
+  # time a .NET program reads a key, and on a pty that lands in the transcript
+  # ahead of the program's first prompt. There is no switch for it, so the
+  # answer is to say the terminal has no such trick to play. Console.Clear and
+  # the colour properties still work under it; they simply stop emitting
+  # escape sequences that the reference interpreter was never going to emit
+  # either.
+  TERM: "dumb"
+
+# The SDK finds its runtimes, its NuGet cache and its home directory through
+# the environment. Pinning the environment is a container's job rather than a
+# runner's.
+inheritEnv: true

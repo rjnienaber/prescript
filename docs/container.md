@@ -20,7 +20,8 @@ make docker_shell # look around
 | --- | --- |
 | Base | `debian:bookworm-slim` by digest |
 | Ruby, Python | Debian stable, a fixed series taking security fixes only |
-| Go, Node | upstream tarballs, checked against a published SHA-256 |
+| Go, Node, Java | upstream tarballs, checked against a published SHA-256 |
+| .NET | the SDK tarball, checked against the SHA-512 Microsoft publishes |
 | vintbas | the same release asset the Makefile installs, checked the same way |
 | Locale | `LANG=LC_ALL=C.UTF-8` |
 | Timezone | `TZ=UTC` |
@@ -72,6 +73,8 @@ base=debian:bookworm-slim@sha256:8820...
 arch=x86_64
 go=go1.24.13
 node=v24.20.0
+java=25.0.4.1
+dotnet=10.0.400
 python=3.11.2
 ruby=3.1.2p20
 vintbas=vintbas-1.0.3-1

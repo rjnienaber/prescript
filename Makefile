@@ -7,7 +7,7 @@ VINTBAS_ASSET := vintbas-$(shell uname -s | tr '[:upper:]' '[:lower:]')-$(shell 
 VINTBAS_URL := https://github.com/rjnienaber/prescript/releases/download/$(VINTBAS_RELEASE)/$(VINTBAS_ASSET)
 
 .PHONY: dependencies
-dependencies: tools vintbas
+dependencies: tools vintbas shims
 
 # Build/lint tooling only. Kept separate from `vintbas` so CI can install
 # what it needs without depending on an external download.
@@ -25,6 +25,21 @@ vintbas:
 	mkdir -p ${HOME}/.local/bin
 	curl -fsSL $(VINTBAS_URL) -o ${HOME}/.local/bin/vintbas
 	chmod +x ${HOME}/.local/bin/vintbas
+
+# The one runner shim that has to be compiled. Ruby, Python, Node and .NET all
+# ship theirs as source the interpreter or the compiler reads on its way past;
+# a JVM agent is a jar or it is nothing.
+#
+# --release 24 rather than whatever JDK is to hand, because the jar is built on
+# a developer's machine and run in the container: 24 is where java.lang.classfile
+# became standard, and is therefore both the floor the agent needs and the
+# oldest JVM the jar should refuse to run on.
+.PHONY: shims
+shims:
+	javac --release 24 -Xlint:all -d runners/java/classes \
+		runners/java/prescript/Tape.java runners/java/prescript/Agent.java
+	jar --create --file runners/java/prescript-agent.jar \
+		--manifest runners/java/manifest.txt -C runners/java/classes .
 
 # Re-records the tape of random values from the reference interpreter. Not
 # wired into any other target on purpose: the tape is checked in because a
@@ -73,7 +88,7 @@ docker_shell:
 # environment, and pinning a linter into the image would mean rebuilding it to
 # upgrade one.
 .PHONY: container_checks
-container_checks: test build_dev examples
+container_checks: shims test build_dev examples
 
 .PHONY: format
 format:

@@ -17,6 +17,12 @@
 # CPython writes this next to the seeding shim the moment a runner uses it.
 __pycache__/
 
+# The Java shim is built by `make shims` rather than checked in: a jar is a
+# binary, and one built from sources in this repository is easier to trust than
+# one that arrived with it.
+runners/java/classes/
+runners/java/prescript-agent.jar
+
 # other
 TODO.md
 tmp/

@@ -1,0 +1,23 @@
+<!--
+  Puts the shim beside a .NET port's own source, so the port compiles against
+  prescript's System.Random instead of the runtime's.
+
+  Imported by MSBuild through the CustomBeforeMicrosoftCommonTargets property,
+  which the runner passes on the command line. The environment variable of the
+  same name works for a .csproj, but not for a file-based app: `dotnet run
+  app.cs` builds through the SDK in-process, and the environment does not
+  become MSBuild properties there. A command-line property reaches both.
+
+  CS0436 is the compiler saying the source type won over the imported one,
+  which is the entire mechanism, so it is not a warning worth printing once per
+  file that mentions Random.
+-->
+<Project>
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);436</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)prescript/*.cs" />
+  </ItemGroup>
+</Project>

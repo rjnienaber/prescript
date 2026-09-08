@@ -1,0 +1,34 @@
+# How to start a Java port, and how to make its randomness repeatable.
+#
+#   prescript play dice.yaml --runner runners/java.yaml
+#
+# The port is a source file: `java Rng.java` compiles and runs it in one step,
+# the way `go run` does, so a corpus can hold sources rather than builds.
+version: "0.8"
+executable: java
+
+# The JVM loads this before the program's main method, so a port does not have
+# to know it exists and does not have to be edited. ${runnerDir} is where this
+# file lives, so the runner and its shim travel together whatever directory
+# prescript is run from.
+#
+# An argument rather than an environment variable: JDK_JAVA_OPTIONS would work,
+# and the launcher announces on stderr that it picked it up, which lands in the
+# middle of the transcript being compared.
+#
+# The jar is built rather than checked in -- `make shims`, which the container
+# and CI both run. It needs a JDK 24 or newer, because the shim rewrites the
+# port's calls with java.lang.classfile rather than a third-party bytecode
+# library. See runners/java/prescript/Agent.java.
+arguments: ["-javaagent:${runnerDir}/java/prescript-agent.jar"]
+
+env:
+  # One variable seeds every language. Two ports of the same program still draw
+  # different numbers from it -- that is what a tape fixes, not a seed -- but
+  # each of them draws the same numbers every time.
+  PRESCRIPT_SEED: "0"
+
+# A JDK installed by sdkman, jenv or asdf is found through the environment, and
+# a port with dependencies resolves them through it too. Pinning the
+# environment is a container's job rather than a runner's.
+inheritEnv: true
