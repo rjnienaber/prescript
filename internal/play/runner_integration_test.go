@@ -23,7 +23,10 @@ import (
 // one machine's: Ruby and Python both promise a reproducible Mersenne Twister,
 // Go's is the fixed source it used before it started seeding itself, Java's is
 // the linear congruential generator java.util.Random specifies exactly, and
-// Node's is the generator in runners/node/random.js.
+// Node's is the generator in runners/node/random.js. Perl's is drand48, and
+// Lua's the xoshiro256** it has used since 5.4 -- checked against both 5.4 and
+// 5.5, which agree, so the row belongs to the language rather than to whichever
+// one is installed.
 //
 // .NET draws what Node draws, and that is not a mistake. Its shim replaces
 // System.Random outright, so it has to bring a generator rather than seed one,
@@ -41,6 +44,8 @@ var seededRunners = []struct {
 	{runner: "go.yaml", program: "rng.go", drawn: "604 940 664"},
 	{runner: "java.yaml", program: "rng.java", drawn: "730 240 637"},
 	{runner: "dotnet.yaml", program: "rng.cs", drawn: "358 105 675"},
+	{runner: "perl.yaml", program: "rng.pl", drawn: "170 749 96"},
+	{runner: "lua.yaml", program: "rng.lua", drawn: "246 234 69"},
 }
 
 func repositoryPath(t *testing.T, parts ...string) string {
@@ -222,6 +227,8 @@ var tapedRunners = []struct {
 	{runner: "node.yaml", program: "rng.js"},
 	{runner: "java.yaml", program: "rng.java"},
 	{runner: "dotnet.yaml", program: "rng.cs"},
+	{runner: "perl.yaml", program: "rng.pl"},
+	{runner: "lua.yaml", program: "rng.lua"},
 }
 
 // referenceDraws is what the reference BASIC interpreter itself prints for

@@ -201,9 +201,10 @@ testable:
 prescript play scripts/33-dice.yaml --runner runners/ruby.yaml -- 33_Dice/ruby/dice.rb
 ```
 
-Ruby, Python, Node, Java and .NET ship and take a tape; Go ships and can be
-seeded but not taped. All are covered by tests. The Java shim is a javaagent
-jar, so it has to be built once with `make shims` before its runner will work.
+Ruby, Python, Node, Perl, Lua, Java and .NET ship and take a tape; Go ships and
+can be seeded but not taped. All are covered by tests. The Java shim is a
+javaagent jar, so it has to be built once with `make shims` before its runner
+will work.
 
 A seed makes one port repeatable, but the same seed gives each language a
 different sequence, so one script still cannot serve them all. `--tape` closes

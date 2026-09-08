@@ -44,6 +44,11 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # Perl is already on the image; Lua is not, and 5.4 is what the
+      # container has.
+      - name: install lua
+        run: sudo apt-get install --no-install-recommends --yes lua5.4
+
       # The Java shim is a jar, so unlike every other runner's it has to exist
       # before the suite can use it.
       - name: make shims

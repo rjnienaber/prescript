@@ -1,0 +1,25 @@
+# How to start a Perl port, and how to make its randomness repeatable.
+#
+#   prescript play dice.yaml --runner runners/perl.yaml
+version: "0.8"
+executable: perl
+
+env:
+  # Perl loads this before it compiles the program, so a port does not have to
+  # be edited to be made deterministic -- and the ordering is not incidental:
+  # an override of rand has to be in place before the program's call sites are
+  # compiled, or they bind to the built-in. -I puts the shim's directory on the
+  # module path so -M can name it. ${runnerDir} is where this file lives, so
+  # the runner and its shim travel together whatever directory prescript is run
+  # from.
+  PERL5OPT: "-I${runnerDir}/perl -Mprescript"
+
+  # One variable seeds every language. Two ports of the same program still draw
+  # different numbers from it -- that is what a tape fixes, not a seed -- but
+  # each of them draws the same numbers every time.
+  PRESCRIPT_SEED: "0"
+
+# A perl installed by perlbrew or plenv finds its own modules through the
+# environment, and a port with dependencies resolves them through it too.
+# Pinning the environment is a container's job rather than a runner's.
+inheritEnv: true
