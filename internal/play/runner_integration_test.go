@@ -21,8 +21,15 @@ import (
 //
 // They are the language's documented sequence for that seed, not a snapshot of
 // one machine's: Ruby and Python both promise a reproducible Mersenne Twister,
-// Go's is the fixed source it used before it started seeding itself, and
+// Go's is the fixed source it used before it started seeding itself, Java's is
+// the linear congruential generator java.util.Random specifies exactly, and
 // Node's is the generator in runners/node/random.js.
+//
+// .NET draws what Node draws, and that is not a mistake. Its shim replaces
+// System.Random outright, so it has to bring a generator rather than seed one,
+// and it brings the same mulberry32 the Node shim already carries instead of a
+// second one to explain. Two languages agreeing under a seed is a coincidence
+// of the shims; a tape is what makes agreement mean something.
 var seededRunners = []struct {
 	runner  string
 	program string
@@ -32,6 +39,8 @@ var seededRunners = []struct {
 	{runner: "python.yaml", program: "rng.py", drawn: "844 757 420"},
 	{runner: "node.yaml", program: "rng.js", drawn: "358 105 675"},
 	{runner: "go.yaml", program: "rng.go", drawn: "604 940 664"},
+	{runner: "java.yaml", program: "rng.java", drawn: "730 240 637"},
+	{runner: "dotnet.yaml", program: "rng.cs", drawn: "358 105 675"},
 }
 
 func repositoryPath(t *testing.T, parts ...string) string {
@@ -55,7 +64,8 @@ func repositoryPath(t *testing.T, parts ...string) string {
 // turn the build red rather than quietly shrink what is being checked.
 func loadRunner(t *testing.T, name string) script.Runner {
 	t.Helper()
-	runner, err := script.ParseRunnerFromFile(repositoryPath(t, "runners", name))
+	directory := repositoryPath(t, "runners")
+	runner, err := script.ParseRunnerFromFile(filepath.Join(directory, name))
 	assert.NoError(t, err)
 
 	if _, err := exec.LookPath(runner.Executable); err != nil {
@@ -65,7 +75,63 @@ func loadRunner(t *testing.T, name string) script.Runner {
 		t.Skipf("%s is not installed, so %s cannot be checked here", runner.Executable, name)
 	}
 
+	if shim := missingShim(runner, directory); shim != "" {
+		if os.Getenv("PRESCRIPT_REQUIRE_RUNNERS") != "" {
+			t.Fatalf("%s does not exist, so %s cannot be checked, and PRESCRIPT_REQUIRE_RUNNERS says it has to be; run make shims", shim, name)
+		}
+		t.Skipf("%s does not exist, so %s cannot be checked here; run make shims", shim, name)
+	}
+
 	return runner
+}
+
+// missingShim names a file the runner points at that is not there.
+//
+// The Java shim is built rather than checked in, and a runner whose jar is
+// missing fails the same way a broken shim would: the program runs, draws its
+// own numbers and disagrees with the script. That is a confusing way to be
+// told to run make shims.
+//
+// Written as a search for the runner's own directory rather than a check of
+// whole values, because a shim is always named inside something else --
+// -javaagent:<jar>, -r<file>, --property:Name=<file>.
+func missingShim(runner script.Runner, directory string) string {
+	values := append([]string{}, runner.Arguments...)
+	for _, value := range runner.Env {
+		values = append(values, value)
+	}
+
+	for _, value := range values {
+		start := strings.Index(value, directory)
+		if start < 0 {
+			continue
+		}
+
+		path := strings.FieldsFunc(value[start:], func(r rune) bool { return r == ' ' || r == '"' })[0]
+		if _, err := os.Stat(path); err != nil {
+			return path
+		}
+	}
+
+	return ""
+}
+
+// withoutShims keeps the arguments that are only how a language is started --
+// `go run`, `dotnet run` -- and drops the ones that activate a shim.
+//
+// Both kinds live in the same list, so dropping the list wholesale would be
+// testing that `go` with no subcommand fails, which it does for reasons that
+// have nothing to do with randomness. The rule is the same one missingShim
+// uses: an argument that names something in the runner's own directory is the
+// runner doing its job, and everything else is just the command line.
+func withoutShims(runner script.Runner, directory string) []string {
+	var kept []string
+	for _, argument := range runner.Arguments {
+		if !strings.Contains(argument, directory) {
+			kept = append(kept, argument)
+		}
+	}
+	return kept
 }
 
 // drawingRun scripts one of the rng fixtures: it is asked for as many numbers
@@ -119,7 +185,17 @@ func TestWithoutARunnerTheSameProgramIsUnscriptable(t *testing.T) {
 
 			run := drawingRun(t, language.program, language.drawn)
 			run.Executable = runner.Executable
-			run.RunnerArguments = runner.Arguments
+			run.RunnerArguments = withoutShims(runner, repositoryPath(t, "runners"))
+
+			// TERM comes along for the same reason `dotnet run` does: it is
+			// how the language is started rather than how it is seeded. Left
+			// out, .NET's console announces itself in escape codes ahead of
+			// the program's first prompt, and this test fails a step earlier
+			// than it means to, for a reason that is not randomness.
+			if term, set := runner.Env["TERM"]; set {
+				run.InheritEnv = true
+				run.Env = map[string]string{"TERM": term}
+			}
 
 			exitCode := 0
 			report := captureStderr(t, func() {
@@ -144,6 +220,8 @@ var tapedRunners = []struct {
 	{runner: "ruby.yaml", program: "rng.rb"},
 	{runner: "python.yaml", program: "rng.py"},
 	{runner: "node.yaml", program: "rng.js"},
+	{runner: "java.yaml", program: "rng.java"},
+	{runner: "dotnet.yaml", program: "rng.cs"},
 }
 
 // referenceDraws is what the reference BASIC interpreter itself prints for

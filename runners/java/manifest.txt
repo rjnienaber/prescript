@@ -1,0 +1,2 @@
+Premain-Class: prescript.Agent
+Can-Retransform-Classes: false

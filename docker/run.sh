@@ -13,6 +13,17 @@
 # tmp/ is not: `make build_dev` in here produces a linux binary, and dropping
 # that on top of the one the host just built turns the next `make examples`
 # into "cannot execute binary file".
+#
+# The cache volumes are only about speed. Go, and .NET more so, rebuild the
+# world in a fresh container, and `dotnet run` on a file-based app compiles the
+# program every time it starts -- which happens once per scripted run rather
+# than once per suite. Nothing in them affects what a program prints.
+#
+# Not ~/.dotnet, which looks like the obvious one and breaks the SDK: it holds
+# the first-run sentinel, and the first run is also what creates ~/.local/share.
+# Persist the sentinel without persisting the directory it stood for and every
+# later run skips the setup, finds no local application data folder, and dies
+# with "Unable to determine a temporary directory path".
 set -euo pipefail
 
 IMAGE="${PRESCRIPT_IMAGE_NAME:-prescript-env:dev}"
@@ -62,6 +73,8 @@ exec docker run --rm ${INTERACTIVE[@]+"${INTERACTIVE[@]}"} ${SECCOMP[@]+"${SECCO
   --mount type=volume,source=prescript-tmp,target=/workspace/tmp \
   --mount type=volume,source=prescript-go-build,target=/root/.cache/go-build \
   --mount type=volume,source=prescript-go-mod,target=/root/go/pkg/mod \
+  --mount type=volume,source=prescript-nuget,target=/root/.nuget/packages \
+  --mount type=volume,source=prescript-dotnet,target=/root/.local/share/dotnet \
   --env PRESCRIPT_IMAGE="$DIGEST" \
   --env PRESCRIPT_REQUIRE_RUNNERS=1 \
   "$IMAGE" "$@"
